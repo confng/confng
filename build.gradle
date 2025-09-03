@@ -1,0 +1,110 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+}
+
+group = 'org.confng'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+
+    // Required for Maven Central
+    withJavadocJar()
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'org.reflections:reflections:0.10.2'
+
+    testImplementation 'org.testng:testng:7.11.0'
+}
+
+test {
+    useTestNG {
+        suites 'src/test/resources/testng.xml'
+    }
+}
+
+javadoc {
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    options.author = true
+    options.version = true
+    options.use = true
+    options.windowTitle = "ConfNG ${version} API"
+    options.docTitle = "ConfNG ${version} API"
+    options.bottom = "Copyright © 2025 ConfNG. All rights reserved."
+    options.links(
+            'https://docs.oracle.com/en/java/javase/11/docs/api/',
+            'https://www.javadoc.io/doc/com.google.code.gson/gson/latest/'
+    )
+
+    // Include only main source files, exclude test files
+    source = sourceSets.main.allJava
+    classpath = configurations.compileClasspath
+
+    // Suppress strict warnings
+    options.addBooleanOption('Xdoclint:none', true)
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            groupId = 'org.confng' as Publication
+            artifactId = 'confng' as Publication
+            version = '1.0.0' as Publication
+
+            pom {
+                name.set("ConfNG")
+                description.set("A configuration management tool for Java TestNG projects")
+                url.set("https://github.com/confng/confng")
+
+                licenses {
+                    license {
+                        name.set("Apache License 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("imBharatMalviya")
+                        name.set("Bharat Kumar Malviya")
+                        email.set("bharatmalviya@outlook.com")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:git://github.com/confng/confng.git")
+                    developerConnection.set("scm:git:ssh://github.com:confng/confng.git")
+                    url.set("https://github.com/confng/confng")
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = "OSSRH"
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            credentials {
+                username = project.findProperty("ossrhUsername") ?: ""
+                password = project.findProperty("ossrhPassword") ?: ""
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
+}

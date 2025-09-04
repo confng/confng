@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
-    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
+    id 'org.jreleaser' version '1.20.0'
 }
 
 group = 'org.confng'
@@ -55,31 +55,18 @@ javadoc {
     // Suppress strict warnings
     options.addBooleanOption('Xdoclint:none', true)
 }
-
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            groupId = 'org.confng'
-            artifactId = 'confng'
-            version = version
-
             pom {
                 name.set("ConfNG")
-                description.set("A configuration management tool for Java/TestNG projects")
+                description.set("Configuration management for TestNG projects")
                 url.set("https://confng.org")
-
                 licenses {
                     license {
-                        name.set("Apache License 2.0")
+                        name.set("Apache-2.0")
                         url.set("https://www.apache.org/licenses/LICENSE-2.0")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("confng")
-                        name.set("Bharat Kumar Malviya")
-                        url.set("https://github.com/imBharatMalviya")
                     }
                 }
                 scm {
@@ -90,24 +77,40 @@ publishing {
             }
         }
     }
-}
-
-signing {
-    // Uses in-memory keys provided via environment variables in CI
-    def key = System.getenv("GPG_PRIVATE_KEY")
-    def pass = System.getenv("GPG_PASSPHRASE")
-    if (key && pass) {
-        useInMemoryPgpKeys(key, pass)
-        sign publishing.publications.mavenJava
+    // Stage locally; JReleaser uploads from here
+    repositories {
+        maven {
+            name = "staging"
+            url = layout.buildDirectory.dir("staging-deploy").get().asFile.toURI()
+        }
     }
 }
+jreleaser {
+    // Use your EXISTING secret names
+    signing {
+        active = 'ALWAYS'
+        armored = true
+        mode = 'MEMORY'
+        // JReleaser wants both public & secret; public can be derived but setting secret & passphrase is enough.
+        // If you also have a public key, you can add `publicKey = System.getenv("GPG_PUBLIC_KEY")`
+        secretKey = System.getenv("GPG_PRIVATE_KEY")
+        passphrase = System.getenv("GPG_PASSPHRASE")
+    }
+    deploy {
+        maven {
+            mavenCentral {
+                sonatype {
+                    active = 'ALWAYS'
+                    // Central Publisher API
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    // JReleaser uploads whatever Gradle staged here
+                    stagingRepository('build/staging-deploy')
 
-nexusPublishing {
-    repositories {
-        sonatype {
-            // s01 is the modern host; this is handled by the plugin
-            username = System.getenv("OSSRH_USERNAME")
-            password = System.getenv("OSSRH_PASSWORD")
+                    // Keep your existing names
+                    username = System.getenv("OSSRH_USERNAME")
+                    password = System.getenv("OSSRH_PASSWORD")
+                }
+            }
         }
     }
 }

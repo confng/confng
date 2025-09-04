@@ -91,8 +91,7 @@ jreleaser {
         active = 'ALWAYS'
         armored = true
         mode = 'MEMORY'
-        // JReleaser wants both public & secret; public can be derived but setting secret & passphrase is enough.
-        // If you also have a public key, you can add `publicKey = System.getenv("GPG_PUBLIC_KEY")`
+        publicKey = System.getenv("GPG_PUBLIC_KEY")
         secretKey = System.getenv("GPG_PRIVATE_KEY")
         passphrase = System.getenv("GPG_PASSPHRASE")
     }

@@ -18,7 +18,7 @@ Add ConfNG to your Gradle project:
 
 ```gradle
 dependencies {
-    implementation 'org.confng:confng:1.0-SNAPSHOT'
+    implementation 'org.confng:confng:1.0.0'
 }
 ```
 
@@ -28,7 +28,7 @@ Or Maven:
 <dependency>
     <groupId>org.confng</groupId>
     <artifactId>confng</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -264,14 +264,6 @@ String allConfigs = ConfNG.getAllForDisplay(MyConfig.values());
 - **Invalid Files**: Runtime exceptions are thrown for files that exist but cannot be parsed
 - **Type Conversion**: `IllegalArgumentException` is thrown for invalid type conversions
 - **Missing Values**: Methods return `null` when configuration values are not found
-
-## Examples
-
-See the `/examples` directory for complete working examples:
-
-- **TestNG Example**: Demonstrates basic usage in TestNG tests
-- **Custom Sources**: Shows how to implement custom configuration sources
-- **Multi-environment**: Example of environment-specific configuration
 
 ## Requirements
 

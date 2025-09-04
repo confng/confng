@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
 }
 
 group = 'org.confng'
@@ -59,15 +60,14 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-
-            groupId = 'org.confng' as Publication
-            artifactId = 'confng' as Publication
-            version = '1.0.0' as Publication
+            groupId = 'org.confng'
+            artifactId = 'confng'
+            version = version
 
             pom {
                 name.set("ConfNG")
-                description.set("A configuration management tool for Java TestNG projects")
-                url.set("https://github.com/confng/confng")
+                description.set("A configuration management tool for Java/TestNG projects")
+                url.set("https://confng.org")
 
                 licenses {
                     license {
@@ -75,36 +75,39 @@ publishing {
                         url.set("https://www.apache.org/licenses/LICENSE-2.0")
                     }
                 }
-
                 developers {
                     developer {
-                        id.set("imBharatMalviya")
+                        id.set("confng")
                         name.set("Bharat Kumar Malviya")
-                        email.set("bharatmalviya@outlook.com")
+                        url.set("https://github.com/imBharatMalviya")
                     }
                 }
-
                 scm {
-                    connection.set("scm:git:git://github.com/confng/confng.git")
-                    developerConnection.set("scm:git:ssh://github.com:confng/confng.git")
+                    connection.set("scm:git:https://github.com/confng/confng.git")
+                    developerConnection.set("scm:git:ssh://github.com/confng/confng.git")
                     url.set("https://github.com/confng/confng")
                 }
-            }
-        }
-    }
-
-    repositories {
-        maven {
-            name = "OSSRH"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = project.findProperty("ossrhUsername") ?: ""
-                password = project.findProperty("ossrhPassword") ?: ""
             }
         }
     }
 }
 
 signing {
-    sign publishing.publications.mavenJava
+    // Uses in-memory keys provided via environment variables in CI
+    def key = System.getenv("GPG_PRIVATE_KEY")
+    def pass = System.getenv("GPG_PASSPHRASE")
+    if (key && pass) {
+        useInMemoryPgpKeys(key, pass)
+        sign publishing.publications.mavenJava
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            // s01 is the modern host; this is handled by the plugin
+            username = System.getenv("OSSRH_USERNAME")
+            password = System.getenv("OSSRH_PASSWORD")
+        }
+    }
 }

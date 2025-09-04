@@ -69,6 +69,13 @@ publishing {
                         url.set("https://www.apache.org/licenses/LICENSE-2.0")
                     }
                 }
+                developers {
+                    developer {
+                        id.set("confng")
+                        name.set("ConfNG Team")
+                        url.set("https://github.com/confng")
+                    }
+                }
                 scm {
                     connection.set("scm:git:https://github.com/confng/confng.git")
                     developerConnection.set("scm:git:ssh://github.com/confng/confng.git")

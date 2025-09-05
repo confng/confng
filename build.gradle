@@ -93,14 +93,10 @@ publishing {
     }
 }
 jreleaser {
-    // Use your EXISTING secret names
     signing {
         active = 'ALWAYS'
         armored = true
         mode = 'MEMORY'
-        publicKey = System.getenv("GPG_PUBLIC_KEY")
-        secretKey = System.getenv("GPG_PRIVATE_KEY")
-        passphrase = System.getenv("GPG_PASSPHRASE")
     }
     deploy {
         maven {

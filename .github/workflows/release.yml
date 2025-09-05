@@ -1,6 +1,7 @@
 name: Release to Maven Central
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*.*.*'   # e.g., v1.0.0

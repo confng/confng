@@ -18,7 +18,6 @@ import java.util.Optional;
  * 
  * @author Bharat Kumar Malviya
  * @author GitHub: github.com/imBharatMalviya
- * @version 1.0.0
  * @since 1.0
  * @see org.confng.sources.ConfigSource
  */
@@ -51,11 +50,43 @@ public class JsonSource implements ConfigSource {
     @Override
     public Optional<String> get(String key) {
         if (root == null) return Optional.empty();
-        JsonElement el = root.get(key);
-        if (el == null || el.isJsonNull()) return Optional.empty();
-        if (el.isJsonPrimitive()) {
-            return Optional.of(el.getAsJsonPrimitive().getAsString());
+        
+        JsonElement element = getNestedElement(root, key);
+        if (element == null || element.isJsonNull()) {
+            return Optional.empty();
         }
-        return Optional.of(el.toString());
+        
+        if (element.isJsonPrimitive()) {
+            return Optional.of(element.getAsJsonPrimitive().getAsString());
+        }
+        
+        return Optional.of(element.toString());
+    }
+
+    @Override
+    public int getPriority() {
+        return 30; // Medium-low priority for JSON files
+    }
+    
+    /**
+     * Retrieves a nested JSON element using dot notation.
+     * For example, "app.name" will look for {"app": {"name": "value"}}
+     */
+    private JsonElement getNestedElement(JsonObject obj, String key) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+        
+        String[] parts = key.split("\\.");
+        JsonElement current = obj;
+        
+        for (String part : parts) {
+            if (current == null || !current.isJsonObject()) {
+                return null;
+            }
+            current = current.getAsJsonObject().get(part);
+        }
+        
+        return current;
     }
 }

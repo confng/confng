@@ -19,5 +19,6 @@ buildNumber.properties
 .classpath
 /build/
 /.gradle/
-/examples/*
+/playground/*
+/site/*
 .DS_Store

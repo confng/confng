@@ -21,7 +21,6 @@ import static org.testng.Assert.*;
  * 
  * @author Bharat Kumar Malviya
  * @author GitHub: github.com/imBharatMalviya
- * @version 1.0.0
  * @since 1.0
  */
 public class ConfigSourceTest {

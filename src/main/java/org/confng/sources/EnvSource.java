@@ -11,7 +11,6 @@ import java.util.Optional;
  * 
  * @author Bharat Kumar Malviya
  * @author GitHub: github.com/imBharatMalviya
- * @version 1.0.0
  * @since 1.0
  * @see org.confng.sources.ConfigSource
  */
@@ -43,5 +42,10 @@ public class EnvSource implements ConfigSource {
     @Override
     public Optional<String> get(String key) {
         return Optional.ofNullable(environment.get(key));
+    }
+
+    @Override
+    public int getPriority() {
+        return 60; // High priority for environment variables
     }
 }

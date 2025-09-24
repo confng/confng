@@ -23,7 +23,6 @@ package org.confng.api;
  * 
  * @author Bharat Kumar Malviya
  * @author GitHub: github.com/imBharatMalviya
- * @version 1.0.0
  * @since 1.0
  * @see org.confng.ConfNG
  */

@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'org.confng'
-version = '1.0.0'
+version = '1.0.1'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -24,8 +24,11 @@ repositories {
 dependencies {
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'org.reflections:reflections:0.10.2'
-
+    
+    // TestNG is optional - only needed if using TestNG integration features
+    compileOnly 'org.testng:testng:7.11.0'
     testImplementation 'org.testng:testng:7.11.0'
+    testImplementation 'com.google.inject:guice:7.0.0'
 }
 
 test {

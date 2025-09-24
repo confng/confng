@@ -1,11 +1,7 @@
 package org.confng;
 
 import org.confng.api.ConfNGKey;
-import org.confng.sources.ConfigSource;
-import org.confng.sources.EnvSource;
-import org.confng.sources.SystemPropertySource;
-import org.confng.sources.PropertiesSource;
-import org.confng.sources.JsonSource;
+import org.confng.sources.*;
 
 import org.reflections.Reflections;
 
@@ -33,7 +29,6 @@ import java.util.Set;
  * 
  * @author Bharat Kumar Malviya
  * @author GitHub: github.com/imBharatMalviya
- * @version 1.0.0
  * @since 1.0
  * @see org.confng.api.ConfNGKey
  * @see org.confng.sources.ConfigSource
@@ -60,6 +55,33 @@ public class ConfNG {
             throw new IllegalArgumentException("Invalid precedence index: " + precedenceIndex);
         }
         sources.add(precedenceIndex, source);
+        invalidateResolution();
+    }
+
+    /**
+     * Adds a configuration source with automatic priority-based ordering.
+     * Sources with higher priority values are placed earlier in the resolution chain.
+     * 
+     * @param source the configuration source to add
+     */
+    public static void addSource(ConfigSource source) {
+        if (source == null) {
+            throw new IllegalArgumentException("Configuration source cannot be null");
+        }
+
+        // Find the correct position based on priority
+        int insertIndex = 0;
+        int sourcePriority = source.getPriority();
+        
+        for (int i = 0; i < sources.size(); i++) {
+            if (sources.get(i).getPriority() < sourcePriority) {
+                insertIndex = i;
+                break;
+            }
+            insertIndex = i + 1;
+        }
+        
+        sources.add(insertIndex, source);
         invalidateResolution();
     }
 
@@ -202,18 +224,27 @@ public class ConfNG {
      * @return the configuration value, or the default value if not found
      */
     public static String get(ConfNGKey key) {
-        ensureResolved();
         String k = key.getKey();
+        // Check if the highest-priority source is TestNGParameterSource
+        if (!sources.isEmpty() && sources.get(0) instanceof org.confng.sources.TestNGParameterSource) {
+            for (ConfigSource source : sources) {
+                if (source instanceof org.confng.sources.TestNGParameterSource) {
+                    Optional<String> value = source.get(k);
+                    if (value.isPresent()) {
+                        return value.get();
+                    }
+                }
+            }
+        }
+        // Otherwise, use cache as before
+        ensureResolved();
         String value = resolvedValues.get(k);
-        
-        // If not found in resolved values, try to resolve this specific key
         if (value == null && !resolvedValues.containsKey(k)) {
             Set<String> singleKey = new HashSet<>();
             singleKey.add(k);
             resolveAllValues(singleKey);
             value = resolvedValues.get(k);
         }
-        
         return value != null ? value : key.getDefaultValue();
     }
 

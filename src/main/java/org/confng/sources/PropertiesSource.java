@@ -15,7 +15,6 @@ import java.util.Properties;
  * 
  * @author Bharat Kumar Malviya
  * @author GitHub: github.com/imBharatMalviya
- * @version 1.0.0
  * @since 1.0
  * @see org.confng.sources.ConfigSource
  */
@@ -47,5 +46,10 @@ public class PropertiesSource implements ConfigSource {
     @Override
     public Optional<String> get(String key) {
         return Optional.ofNullable(properties.getProperty(key));
+    }
+
+    @Override
+    public int getPriority() {
+        return 25; // Low-medium priority for properties files
     }
 }

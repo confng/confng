@@ -1,8 +1,1 @@
 rootProject.name = 'confng'
-
-// Include examples as subprojects
-include 'examples:json-config'
-include 'examples:env-variables'
-include 'examples:system-properties'
-include 'examples:secret-managers'
-include 'examples:database-config'

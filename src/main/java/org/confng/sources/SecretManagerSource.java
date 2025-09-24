@@ -12,7 +12,6 @@ import java.util.Optional;
  * 
  * @author Bharat Kumar Malviya
  * @author GitHub: github.com/imBharatMalviya
- * @version 1.0.0
  * @since 1.0
  * @see org.confng.sources.ConfigSource
  */
@@ -151,5 +150,10 @@ public abstract class SecretManagerSource implements ConfigSource {
      */
     public int getCacheSize() {
         return secretCache.size();
+    }
+
+    @Override
+    public int getPriority() {
+        return 100; // Highest priority for secret managers
     }
 }

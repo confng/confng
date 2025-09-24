@@ -1,16 +1,17 @@
 # ConfNG
 
-ConfNG is a lightweight configuration management library designed for Java projects using TestNG. It simplifies loading and resolving configuration values from multiple sources like environment variables, system properties, properties files, JSON files, and custom sources.
+ConfNG is a lightweight configuration management library built for TestNG projects with extensible support for other Java applications. Named after TestNG, it provides zero-configuration integration features for TestNG projects while maintaining compatibility with other Java applications. It simplifies loading and resolving configuration values from multiple sources like environment variables, system properties, properties files, JSON files, and custom sources.
 
 ## Features
 
+- **Automatic TestNG Parameter Injection**: Zero-configuration parameter injection via built-in listener that automatically captures suite, test, and method-level parameters
 - **Multiple Configuration Sources**: Environment variables, system properties, properties files, JSON files, and custom sources
 - **Precedence-based Resolution**: Configurable source priority with sensible defaults
 - **Type Safety**: Enum-based configuration keys with compile-time checking
 - **Auto-discovery**: Automatic scanning for configuration keys using reflection
 - **Extensible**: Easy to add custom configuration sources
-- **TestNG Integration**: Designed specifically for TestNG test frameworks
-- **Java 8+ Compatible**: Works with Java 8 and later versions
+- **TestNG-First Design**: Built specifically for TestNG projects with automatic parameter injection features, extensible for other Java applications
+- **Java 11+ Compatible**: Works with Java 11 and later versions
 
 ## Installation
 
@@ -18,7 +19,7 @@ Add ConfNG to your Gradle project:
 
 ```gradle
 dependencies {
-    implementation 'org.confng:confng:1.0.0'
+    implementation 'org.confng:confng:1.0.1'
 }
 ```
 
@@ -28,7 +29,7 @@ Or Maven:
 <dependency>
     <groupId>org.confng</groupId>
     <artifactId>confng</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -36,12 +37,12 @@ Or Maven:
 
 ### 1. Define Configuration Keys
 
-Create an enum that implements `ConfigKey`:
+Create an enum that implements `ConfNGKey`:
 
 ```java
-import org.confng.api.ConfigKey;
+import org.confng.api.ConfNGKey;
 
-public enum TestConfig implements ConfigKey {
+public enum TestConfig implements ConfNGKey {
     BROWSER("browser"),
     BASE_URL("base.url"),
     TIMEOUT("timeout"),
@@ -65,19 +66,22 @@ public enum TestConfig implements ConfigKey {
 ```java
 import org.confng.ConfNG;
 
-// Load from properties file (optional - skipped if file doesn't exist)
-ConfNG.loadProperties("test.properties");
+// TestNG parameters are automatically injected via built-in listener!
+// No manual configuration required for testng.xml parameters
 
-// Load from JSON file (optional - skipped if file doesn't exist)  
+// Load additional configuration files (optional - skipped if file doesn't exist)
+ConfNG.loadProperties("test.properties");
 ConfNG.loadJson("config.json");
 
 // Add custom source
 ConfNG.registerSource(new CustomConfigSource());
 ```
 
-### 3. Use Configuration in Tests
+### 3. Use Configuration in TestNG Tests
 
 ```java
+// Primary use case: TestNG test projects
+
 @Test
 public void testWithConfiguration() {
     String browser = ConfNG.get(TestConfig.BROWSER);
@@ -88,6 +92,15 @@ public void testWithConfiguration() {
     WebDriver driver = createDriver(browser, headless);
     driver.manage().timeouts().implicitlyWait(timeout, TimeUnit.SECONDS);
 }
+
+// Also works in other Java applications
+public class ConfigService {
+    public void loadConfig() {
+        String dbUrl = ConfNG.get(AppConfig.DATABASE_URL);
+        String apiKey = ConfNG.get(AppConfig.API_KEY);
+        // Your application logic...
+    }
+}
 ```
 
 ## Configuration Sources
@@ -95,11 +108,56 @@ public void testWithConfiguration() {
 ConfNG supports multiple configuration sources with the following default precedence (highest to lowest):
 
 1. **Environment Variables** - `EnvSource`
-2. **System Properties** - `SystemPropertySource`  
-3. **Properties Files** - `PropertiesSource`
-4. **JSON Files** - `JsonSource`
-5. **Secret Managers** - `SecretManagerSource` (base class for custom implementations)
-6. **Custom Sources** - User-defined implementations
+2. **System Properties** - `SystemPropertySource`
+3. **TestNG Parameters (Method Level)** - `TestNGParameterSource` (automatically injected)
+4. **TestNG Parameters (Test Level)** - `TestNGParameterSource` (automatically injected)
+5. **TestNG Parameters (Suite Level)** - `TestNGParameterSource` (automatically injected)
+6. **Properties Files** - `PropertiesSource`
+7. **JSON Files** - `JsonSource`
+8. **Secret Managers** - `SecretManagerSource` (base class for custom implementations)
+9. **Custom Sources** - User-defined implementations
+
+### TestNG Integration Features
+
+ConfNG is built for TestNG projects and automatically activates integration features when TestNG is detected on the classpath via a built-in listener that loads through TestNG's service loader mechanism. No manual configuration is required!
+
+```xml
+<!-- testng.xml -->
+<suite name="Test-Suite">
+    <parameter name="browser" value="chrome"/>
+    <parameter name="base.url" value="https://staging.example.com"/>
+    <test name="Smoke-Tests">
+        <parameter name="browser" value="firefox"/> <!-- Overrides suite level -->
+        <parameter name="timeout" value="45"/>
+        <classes><class name="com.example.SmokeTest"/></classes>
+    </test>
+</suite>
+```
+
+```java
+// TestNG test class - automatic parameter injection!
+public class SmokeTest {
+    @Test
+    public void testAutomaticParameterInjection() {
+        // ✨ TestNG feature: parameters automatically injected!
+        String browser = ConfNG.get(TestConfig.BROWSER);     // "firefox" (test level)
+        String baseUrl = ConfNG.get(TestConfig.BASE_URL);    // "https://staging.example.com" (suite level)
+        Integer timeout = ConfNG.getInt(TestConfig.TIMEOUT); // 45 (test level)
+        
+        // TestNG precedence: Method > Test > Suite > Other sources
+    }
+}
+
+// Extensible: works in other Java applications too
+public class DatabaseService {
+    public void connect() {
+        // Same ConfNG API, no TestNG features (since TestNG not present)
+        ConfNG.loadProperties("app.properties");
+        String dbUrl = ConfNG.get(AppConfig.DATABASE_URL);
+        // Your application logic...
+    }
+}
+```
 
 ### Environment Variables
 
@@ -267,8 +325,8 @@ String allConfigs = ConfNG.getAllForDisplay(MyConfig.values());
 
 ## Requirements
 
-- Java 8 or later
-- TestNG (for test integration)
+- Java 11 or later
+- TestNG (optional - only needed for special TestNG integration features)
 
 ## Roadmap
 

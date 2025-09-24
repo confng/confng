@@ -12,7 +12,6 @@ import java.util.Optional;
  * 
  * @author Bharat Kumar Malviya
  * @author GitHub: github.com/imBharatMalviya
- * @version 1.0.0
  * @since 1.0
  * @see org.confng.ConfNG
  */
@@ -35,4 +34,24 @@ public interface ConfigSource {
      * @return an Optional containing the value if found, empty otherwise
      */
     Optional<String> get(String key);
+    
+    /**
+     * Returns the priority of this configuration source.
+     * 
+     * <p>Sources with higher priority values are consulted first in the resolution chain.
+     * Default priorities:</p>
+     * <ul>
+     *   <li>100+ - Secret managers and secure sources</li>
+     *   <li>80-99 - TestNG parameters and test-specific sources</li>
+     *   <li>60-79 - Environment variables</li>
+     *   <li>40-59 - System properties</li>
+     *   <li>20-39 - Configuration files (JSON, Properties)</li>
+     *   <li>0-19 - Default and fallback sources</li>
+     * </ul>
+     * 
+     * @return the priority value, higher values have higher priority
+     */
+    default int getPriority() {
+        return 10; // Default low priority
+    }
 }

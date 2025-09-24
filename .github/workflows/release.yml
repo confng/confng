@@ -42,9 +42,9 @@ jobs:
       env:
         OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-        JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.JRELEASER_GPG_PRIVATE_KEY }}
-        JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
-        JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+        JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+        JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     
     - name: Release to Maven Central
       run: ./gradlew jreleaserDeploy
@@ -52,6 +52,6 @@ jobs:
         JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-        JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.JRELEASER_GPG_PRIVATE_KEY }}
-        JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
-        JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+        JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+        JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

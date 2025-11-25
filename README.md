@@ -1,11 +1,11 @@
 # ConfNG
 
-ConfNG is a lightweight configuration management library built for TestNG projects with extensible support for other Java applications. Named after TestNG, it provides zero-configuration integration features for TestNG projects while maintaining compatibility with other Java applications. It simplifies loading and resolving configuration values from multiple sources like environment variables, system properties, properties files, JSON files, and custom sources.
+ConfNG is a lightweight configuration management library built for TestNG projects with extensible support for other Java applications. Named after TestNG, it provides zero-configuration integration features for TestNG projects while maintaining compatibility with other Java applications. It simplifies loading and resolving configuration values from multiple sources like environment variables, system properties, properties files, JSON files, YAML files, TOML files, and custom sources.
 
 ## Features
 
 - **Automatic TestNG Parameter Injection**: Zero-configuration parameter injection via built-in listener that automatically captures suite, test, and method-level parameters
-- **Multiple Configuration Sources**: Environment variables, system properties, properties files, JSON files, and custom sources
+- **Multiple Configuration Sources**: Environment variables, system properties, properties files, JSON files, YAML files, TOML files, and custom sources
 - **Precedence-based Resolution**: Configurable source priority with sensible defaults
 - **Type Safety**: Enum-based configuration keys with compile-time checking
 - **Auto-discovery**: Automatic scanning for configuration keys using reflection
@@ -19,7 +19,7 @@ Add ConfNG to your Gradle project:
 
 ```gradle
 dependencies {
-    implementation 'org.confng:confng:1.0.1'
+    implementation 'org.confng:confng:1.0.2'
 }
 ```
 
@@ -29,7 +29,7 @@ Or Maven:
 <dependency>
     <groupId>org.confng</groupId>
     <artifactId>confng</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 ```
 
@@ -72,6 +72,8 @@ import org.confng.ConfNG;
 // Load additional configuration files (optional - skipped if file doesn't exist)
 ConfNG.loadProperties("test.properties");
 ConfNG.loadJson("config.json");
+ConfNG.loadYaml("config.yaml");
+ConfNG.loadToml("config.toml");
 
 // Add custom source
 ConfNG.registerSource(new CustomConfigSource());
@@ -114,8 +116,10 @@ ConfNG supports multiple configuration sources with the following default preced
 5. **TestNG Parameters (Suite Level)** - `TestNGParameterSource` (automatically injected)
 6. **Properties Files** - `PropertiesSource`
 7. **JSON Files** - `JsonSource`
-8. **Secret Managers** - `SecretManagerSource` (base class for custom implementations)
-9. **Custom Sources** - User-defined implementations
+8. **YAML Files** - `YamlSource`
+9. **TOML Files** - `TomlSource`
+10. **Secret Managers** - `SecretManagerSource` (base class for custom implementations)
+11. **Custom Sources** - User-defined implementations
 
 ### TestNG Integration Features
 
@@ -189,6 +193,68 @@ timeout=60
   "base.url": "https://prod.example.com",
   "timeout": 90
 }
+```
+
+### YAML Files
+
+```yaml
+# config.yaml
+browser: chrome
+base.url: https://api.example.com
+timeout: 30
+
+# Environment-specific sections
+uat:
+  database:
+    host: uat-db.example.com
+  api:
+    url: https://uat-api.example.com
+
+prod:
+  database:
+    host: prod-db.example.com
+  api:
+    url: https://prod-api.example.com
+```
+
+```java
+// Load YAML file (all top-level keys)
+ConfNG.loadYaml("config.yaml");
+
+// Load specific environment section from YAML file
+ConfNG.loadYaml("config.yaml", "uat");    // Loads only the "uat" section
+ConfNG.loadYaml("config.yaml", "prod");   // Loads only the "prod" section
+```
+
+### TOML Files
+
+```toml
+# config.toml
+browser = "chrome"
+base.url = "https://api.example.com"
+timeout = 30
+
+[features]
+parallel = true
+headless = false
+
+# Environment-specific sections
+[uat]
+database.host = "uat-db.example.com"
+api.url = "https://uat-api.example.com"
+
+[prod]
+database.host = "prod-db.example.com"
+api.url = "https://prod-api.example.com"
+```
+
+```java
+// Load TOML file (all top-level keys)
+ConfNG.loadToml("config.toml");
+
+// Load specific environment section from TOML file
+ConfNG.loadToml("config.toml", "uat");    // Loads only the "uat" section
+ConfNG.loadToml("config.toml", "qa");     // Loads only the "qa" section
 ```
 
 ### Secret Managers

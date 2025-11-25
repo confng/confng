@@ -1,0 +1,4 @@
+test:
+  classpath: loaded-from-classpath
+  value: 123
+

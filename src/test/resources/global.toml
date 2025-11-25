@@ -1,0 +1,16 @@
+# Global Configuration Example
+# This file contains shared configuration examples
+
+project.name="example-project"
+
+[env1]
+authToken="example-env1-token-replace-with-real"
+
+[env2]
+baseUrl="https://example-api.example.com"
+authToken="example-env2-token-replace-with-real"
+
+[env3]
+baseUrl="https://example-api.example.com"
+authToken="example-env3-token-replace-with-real"
+

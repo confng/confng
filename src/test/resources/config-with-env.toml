@@ -1,0 +1,16 @@
+# Base configuration
+environment = "env1"
+"app.name" = "Base App"
+"app.version" = "3.0.0"
+
+# Environment-specific sections
+[env1]
+"app.name" = "Env1 App"
+"db.host" = "env1-server.com"
+"db.port" = 5432
+
+[env2]
+"app.name" = "Env2 App"
+"db.host" = "env2-server.com"
+"db.port" = 5432
+

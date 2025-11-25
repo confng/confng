@@ -1,5 +1,7 @@
 package org.confng.sources;
 
+import org.confng.util.FileResolver;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -24,8 +26,23 @@ public class PropertiesSource implements ConfigSource {
     private final String sourceName;
 
     /**
+     * Creates a new PropertiesSource from the given file path (supports both filesystem and classpath).
+     *
+     * @param filePath path to the properties file (filesystem or classpath)
+     * @throws IllegalStateException if the file cannot be loaded
+     */
+    public PropertiesSource(String filePath) {
+        this.sourceName = "Properties(" + filePath + ")";
+        try (InputStream in = FileResolver.openInputStream(filePath)) {
+            properties.load(in);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load properties file: " + filePath, e);
+        }
+    }
+
+    /**
      * Creates a new PropertiesSource from the given file.
-     * 
+     *
      * @param file path to the properties file
      * @throws IllegalStateException if the file cannot be loaded
      */

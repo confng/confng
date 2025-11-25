@@ -1,0 +1,5 @@
+# ConfNG Listener Chain
+# Add your custom listener implementations here, one per line
+# Example:
+# com.example.CustomPreListener
+# com.example.CustomPostListener

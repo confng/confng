@@ -1,0 +1,16 @@
+{
+  "environment": "env1",
+  "app.name": "Base App",
+  "app.version": "2.0.0",
+  "env1": {
+    "app.name": "Env1 App",
+    "db.host": "env1-server.com",
+    "db.port": 3306
+  },
+  "env2": {
+    "app.name": "Env2 App",
+    "db.host": "env2-server.com",
+    "db.port": 3306
+  }
+}
+

@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'org.confng'
-version = '1.0.1'
+version = '1.0.2'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -19,16 +19,32 @@ java {
 
 repositories {
     mavenCentral()
+    maven {
+        url 'https://projectlombok.org/edge-releases'
+    }
 }
 
 dependencies {
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'org.reflections:reflections:0.10.2'
-    
+    implementation 'org.yaml:snakeyaml:2.3'
+    implementation 'org.tomlj:tomlj:1.1.1'
+
+    // Lombok for logging - using edge version for Java 24 compatibility
+    compileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
+    annotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
+
+    // SLF4J API for logging
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+
     // TestNG is optional - only needed if using TestNG integration features
     compileOnly 'org.testng:testng:7.11.0'
     testImplementation 'org.testng:testng:7.11.0'
     testImplementation 'com.google.inject:guice:7.0.0'
+
+    // Lombok for tests
+    testCompileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
+    testAnnotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
 }
 
 test {

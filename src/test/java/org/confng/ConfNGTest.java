@@ -32,7 +32,16 @@ public class ConfNGTest {
         BROWSER("browser", "chrome", false),
         TIMEOUT("timeout", "30", false),
         HEADLESS("headless", "false", false),
-        API_KEY("api.key", null, true);
+        API_KEY("api.key", null, true),
+        APP_NAME("app.name", null, false),
+        APP_VERSION("app.version", null, false),
+        DB_HOST("db.host", null, false),
+        DB_PORT("db.port", null, false),
+        ENVIRONMENT("environment", "local", false),
+        TEST_CLASSPATH("test.classpath", null, false),
+        TEST_VALUE("test.value", null, false),
+        PROJECT_NAME("project.name", null, false),
+        AUTH_TOKEN("authToken", null, false);
 
         private final String key;
         private final String defaultValue;
@@ -138,13 +147,169 @@ public class ConfNGTest {
     @Test
     public void nonSensitiveConfigurationIsNotMasked() {
         System.setProperty("browser", "firefox");
-        
+
         String actualValue = ConfNG.get(TestConfigKey.BROWSER);
         assertEquals(actualValue, "firefox");
-        
+
         String displayValue = ConfNG.getForDisplay(TestConfigKey.BROWSER);
         assertEquals(displayValue, "firefox");
-        
+
         System.clearProperty("browser");
+    }
+
+    @Test
+    public void genericLoadAutoDetectsPropertiesFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".properties");
+        Files.writeString(tmp, "browser=autoDetectedChrome\n");
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load(tmp.toString());
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "autoDetectedChrome");
+        Files.deleteIfExists(tmp);
+    }
+
+    @Test
+    public void genericLoadAutoDetectsJsonFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".json");
+        Files.writeString(tmp, "{\"browser\":\"autoDetectedFirefox\"}");
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load(tmp.toString());
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "autoDetectedFirefox");
+        Files.deleteIfExists(tmp);
+    }
+
+    @Test
+    public void genericLoadAutoDetectsYamlFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".yaml");
+        Files.writeString(tmp, "browser: autoDetectedEdge\n");
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load(tmp.toString());
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "autoDetectedEdge");
+        Files.deleteIfExists(tmp);
+    }
+
+    @Test
+    public void genericLoadAutoDetectsYmlFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".yml");
+        Files.writeString(tmp, "browser: autoDetectedSafari\n");
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load(tmp.toString());
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "autoDetectedSafari");
+        Files.deleteIfExists(tmp);
+    }
+
+    @Test
+    public void genericLoadAutoDetectsTomlFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".toml");
+        Files.writeString(tmp, "browser = \"autoDetectedOpera\"\n");
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load(tmp.toString());
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "autoDetectedOpera");
+        Files.deleteIfExists(tmp);
+    }
+
+    @Test
+    public void genericLoadSilentlySkipsMissingFile() {
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load("nonexistent-config.json");
+        // Should not throw exception
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "chrome"); // default value
+    }
+
+    @Test
+    public void genericLoadThrowsOnUnsupportedFileType() throws IOException {
+        Path tmp = Files.createTempFile("config", ".xml");
+        Files.writeString(tmp, "<config></config>");
+        ConfNG.clearSourcesAndUseDefaults();
+
+        try {
+            ConfNG.load(tmp.toString());
+            fail("Should have thrown IllegalArgumentException for unsupported file type");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("Unsupported file type"));
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+    }
+
+    @Test
+    public void genericLoadWithEnvironmentAutoDetectsJsonFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".json");
+        Files.writeString(tmp, "{\"env1\":{\"browser\":\"env1Browser\"}}");
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load(tmp.toString(), "env1");
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "env1Browser");
+        Files.deleteIfExists(tmp);
+    }
+
+    @Test
+    public void genericLoadWithEnvironmentAutoDetectsYamlFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".yaml");
+        Files.writeString(tmp, "env1:\n  browser: env1YamlBrowser\n");
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load(tmp.toString(), "env1");
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "env1YamlBrowser");
+        Files.deleteIfExists(tmp);
+    }
+
+    @Test
+    public void genericLoadWithEnvironmentAutoDetectsTomlFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".toml");
+        Files.writeString(tmp, "[env1]\nbrowser = \"env1TomlBrowser\"\n");
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.load(tmp.toString(), "env1");
+        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "env1TomlBrowser");
+        Files.deleteIfExists(tmp);
+    }
+
+    @Test
+    public void genericLoadWithEnvironmentThrowsOnPropertiesFile() throws IOException {
+        Path tmp = Files.createTempFile("config", ".properties");
+        Files.writeString(tmp, "browser=test\n");
+        ConfNG.clearSourcesAndUseDefaults();
+
+        try {
+            ConfNG.load(tmp.toString(), "env1");
+            fail("Should have thrown IllegalArgumentException for properties file with environment");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("Properties files don't support environment sections"));
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+    }
+
+    @Test
+    public void testGetEnvironmentNameReturnsLocal() {
+        ConfNG.clearSourcesAndUseDefaults();
+        String env = ConfNG.getEnvironmentName();
+        assertEquals(env, "local");
+    }
+
+    @Test
+    public void testLoadFromClasspath() {
+        ConfNG.clearSourcesAndUseDefaults();
+
+        // Load file from classpath (not filesystem)
+        ConfNG.load("classpath-test.yaml");
+
+        // Verify values were loaded from classpath
+        assertEquals(ConfNG.get(TestConfigKey.TEST_CLASSPATH), "loaded-from-classpath");
+        assertEquals(ConfNG.get(TestConfigKey.TEST_VALUE), "123");
+    }
+
+    @Test
+    public void testLoadGlobalTomlWithEnvironmentSection() {
+        ConfNG.clearSourcesAndUseDefaults();
+
+        // Load global.toml which has base config and environment sections
+        ConfNG.load("global.toml");
+
+        // Verify base values are loaded
+        assertEquals(ConfNG.get(TestConfigKey.PROJECT_NAME), "example-project");
+
+        // Load environment-specific section from the same global.toml
+        ConfNG.load("global.toml", "env1");
+
+        // Verify environment-specific values are loaded
+        assertEquals(ConfNG.get(TestConfigKey.AUTH_TOKEN), "example-env1-token-replace-with-real");
     }
 }

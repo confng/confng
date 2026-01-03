@@ -1,5 +1,7 @@
 org.confng
 org.confng.api
+org.confng.internal
 org.confng.sources
 org.confng.testng
 org.confng.util
+org.confng.validation

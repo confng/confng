@@ -6,6 +6,7 @@
             <class name="org.confng.ConfNGTest"/>
             <class name="org.confng.sources.ConfigSourceTest"/>
             <class name="org.confng.sources.SecretManagerSourceTest"/>
+            <class name="org.confng.testng.TestNGListenerChainTest"/>
         </classes>
     </test>
 </suite>

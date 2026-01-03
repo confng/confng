@@ -1,14 +1,11 @@
 package org.confng.sources;
 
-import org.confng.util.FileResolver;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Configuration source that reads from YAML files.
@@ -37,13 +34,11 @@ import java.util.Optional;
  * @author GitHub: github.com/imBharatMalviya
  * @since 1.0
  * @see org.confng.sources.ConfigSource
+ * @see org.confng.sources.AbstractFileConfigSource
  */
-public class YamlSource implements ConfigSource {
+public class YamlSource extends AbstractFileConfigSource<Map<String, Object>> {
 
     private static final Yaml YAML = new Yaml();
-    private final Map<String, Object> root;
-    private final String sourceName;
-    private final String environment;
 
     /**
      * Creates a new YamlSource from the given file path (supports both filesystem and classpath).
@@ -53,7 +48,7 @@ public class YamlSource implements ConfigSource {
      * @throws IllegalStateException if the file cannot be loaded
      */
     public YamlSource(String filePath) {
-        this(filePath, null);
+        super(filePath);
     }
 
     /**
@@ -64,7 +59,7 @@ public class YamlSource implements ConfigSource {
      * @throws IllegalStateException if the file cannot be loaded
      */
     public YamlSource(Path file) {
-        this(file, null);
+        super(file);
     }
 
     /**
@@ -76,15 +71,7 @@ public class YamlSource implements ConfigSource {
      * @throws IllegalStateException if the file cannot be loaded or the environment section doesn't exist
      */
     public YamlSource(String filePath, String environment) {
-        this.environment = environment;
-
-        if (environment != null && !environment.isEmpty()) {
-            this.sourceName = "Yaml(" + filePath + ")[" + environment + "]";
-        } else {
-            this.sourceName = "Yaml(" + filePath + ")";
-        }
-
-        this.root = loadYamlFromString(filePath, environment);
+        super(filePath, environment);
     }
 
     /**
@@ -95,113 +82,45 @@ public class YamlSource implements ConfigSource {
      * @param environment the environment section to load (e.g., "env1", "env2"), or null for all top-level keys
      * @throws IllegalStateException if the file cannot be loaded or the environment section doesn't exist
      */
-    @SuppressWarnings("unchecked")
     public YamlSource(Path file, String environment) {
-        this.environment = environment;
-
-        if (environment != null && !environment.isEmpty()) {
-            this.sourceName = "Yaml(" + file.toString() + ")[" + environment + "]";
-        } else {
-            this.sourceName = "Yaml(" + file.toString() + ")";
-        }
-
-        this.root = loadYaml(file, environment, file.toString());
-    }
-
-    /**
-     * Helper method to load YAML from a String path (supports classpath).
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> loadYamlFromString(String filePath, String environment) {
-        try (Reader reader = FileResolver.openReader(filePath)) {
-            Object loaded = YAML.load(reader);
-
-            if (!(loaded instanceof Map)) {
-                return null;
-            }
-
-            Map<String, Object> fullYaml = (Map<String, Object>) loaded;
-
-            // If environment is specified, extract that section
-            if (environment != null && !environment.isEmpty()) {
-                Object envSection = fullYaml.get(environment);
-                if (envSection == null || !(envSection instanceof Map)) {
-                    throw new IllegalStateException("Environment section '" + environment +
-                        "' not found in YAML file: " + filePath);
-                }
-                return (Map<String, Object>) envSection;
-            } else {
-                // Load all top-level keys
-                return fullYaml;
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load yaml file: " + filePath, e);
-        }
-    }
-
-    /**
-     * Helper method to load YAML from a Path.
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> loadYaml(Path file, String environment, String displayPath) {
-        try (Reader reader = Files.newBufferedReader(file)) {
-            Object loaded = YAML.load(reader);
-
-            if (!(loaded instanceof Map)) {
-                return null;
-            }
-
-            Map<String, Object> fullYaml = (Map<String, Object>) loaded;
-
-            // If environment is specified, extract that section
-            if (environment != null && !environment.isEmpty()) {
-                Object envSection = fullYaml.get(environment);
-                if (envSection == null || !(envSection instanceof Map)) {
-                    throw new IllegalStateException("Environment section '" + environment +
-                        "' not found in YAML file: " + displayPath);
-                }
-                return (Map<String, Object>) envSection;
-            } else {
-                // Load all top-level keys
-                return fullYaml;
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load yaml file: " + displayPath, e);
-        }
+        super(file, environment);
     }
 
     @Override
-    public String getName() {
-        return sourceName;
+    protected String getSourceTypePrefix() {
+        return "Yaml";
     }
 
     @Override
-    public Optional<String> get(String key) {
-        if (root == null) return Optional.empty();
-        
+    @SuppressWarnings("unchecked")
+    protected Map<String, Object> parseContent(Reader reader) throws IOException {
+        Object loaded = YAML.load(reader);
+        if (!(loaded instanceof Map)) {
+            return null;
+        }
+        return (Map<String, Object>) loaded;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected Map<String, Object> extractEnvironmentSection(Map<String, Object> content, String environment, String filePath) {
+        Object envSection = content.get(environment);
+        if (envSection == null || !(envSection instanceof Map)) {
+            throw new IllegalStateException("Environment section '" + environment +
+                "' not found in YAML file: " + filePath);
+        }
+        return (Map<String, Object>) envSection;
+    }
+
+    @Override
+    protected String getValueFromRoot(String key) {
         Object element = getNestedElement(root, key);
         if (element == null) {
-            return Optional.empty();
+            return null;
         }
-        
-        // Convert the value to string
-        if (element instanceof String) {
-            return Optional.of((String) element);
-        } else if (element instanceof Number || element instanceof Boolean) {
-            return Optional.of(element.toString());
-        } else if (element instanceof Map || element instanceof Iterable) {
-            // For complex objects, return their string representation
-            return Optional.of(element.toString());
-        }
-        
-        return Optional.of(element.toString());
+        return element.toString();
     }
 
-    @Override
-    public int getPriority() {
-        return 30; // Medium-low priority for YAML files (same as JSON)
-    }
-    
     /**
      * Retrieves a nested YAML element using dot notation.
      * For example, "app.name" will look for {app: {name: value}}
@@ -211,18 +130,17 @@ public class YamlSource implements ConfigSource {
         if (key == null || key.isEmpty()) {
             return null;
         }
-        
+
         String[] parts = key.split("\\.");
         Object current = obj;
-        
+
         for (String part : parts) {
             if (current == null || !(current instanceof Map)) {
                 return null;
             }
             current = ((Map<String, Object>) current).get(part);
         }
-        
+
         return current;
     }
 }
-

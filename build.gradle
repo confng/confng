@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'org.confng'
-version = '1.0.2'
+version = '1.0.3'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -19,9 +19,6 @@ java {
 
 repositories {
     mavenCentral()
-    maven {
-        url 'https://projectlombok.org/edge-releases'
-    }
 }
 
 dependencies {
@@ -30,9 +27,9 @@ dependencies {
     implementation 'org.yaml:snakeyaml:2.3'
     implementation 'org.tomlj:tomlj:1.1.1'
 
-    // Lombok for logging - using edge version for Java 24 compatibility
-    compileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
-    annotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
+    // Lombok for logging
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
 
     // SLF4J API for logging
     implementation 'org.slf4j:slf4j-api:2.0.9'
@@ -43,8 +40,8 @@ dependencies {
     testImplementation 'com.google.inject:guice:7.0.0'
 
     // Lombok for tests
-    testCompileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
-    testAnnotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
+    testCompileOnly 'org.projectlombok:lombok:1.18.38'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.38'
 }
 
 test {

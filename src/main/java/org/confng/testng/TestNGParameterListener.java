@@ -4,8 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.confng.ConfNG;
 import org.confng.sources.TestNGParameterSource;
 import org.testng.*;
+import org.testng.xml.XmlSuite;
+import org.testng.xml.XmlTest;
 
-import java.lang.reflect.Method;
 import java.util.Map;
 
 /**
@@ -174,10 +175,9 @@ public class TestNGParameterListener implements ITestListener, IInvokedMethodLis
             ConfNG.load("config.toml");
             log.info("[ConfNG] Config files loaded successfully");
 
-            // Use reflection to get parameters to avoid compile-time dependency on TestNG
-            Object xmlSuite = suite.getClass().getMethod("getXmlSuite").invoke(suite);
-            @SuppressWarnings("unchecked")
-            Map<String, String> suiteParameters = (Map<String, String>) xmlSuite.getClass().getMethod("getAllParameters").invoke(xmlSuite);
+            // Use direct TestNG API to get parameters
+            XmlSuite xmlSuite = suite.getXmlSuite();
+            Map<String, String> suiteParameters = xmlSuite.getAllParameters();
             if (suiteParameters != null && !suiteParameters.isEmpty()) {
                 parameterSource.addSuiteParameters(suiteParameters);
             }
@@ -233,7 +233,7 @@ public class TestNGParameterListener implements ITestListener, IInvokedMethodLis
                 log.info("[ConfNG] Environment-specific sections from global files loaded successfully");
             }
         } catch (Exception e) {
-            // Silently ignore if TestNG classes are not available or reflection fails
+            // Log warning if configuration loading fails
             System.err.println("[ConfNG] Warning: Failed to load configuration: " + e.getMessage());
         }
     }
@@ -285,25 +285,24 @@ public class TestNGParameterListener implements ITestListener, IInvokedMethodLis
         // Otherwise, we're being called by the chain - do the actual work
         try {
             ITestContext testContext = testResult.getTestContext();
-            String testName = testContext.getCurrentXmlTest().getName();
+            XmlTest currentXmlTest = testContext.getCurrentXmlTest();
+            String testName = currentXmlTest.getName();
             log.debug("[ConfNG] Setting current test context: {}", testName);
             parameterSource.setCurrentTestName(testName);
 
-            // Existing logic for method parameters
-            Object testMethod = method.getClass().getMethod("getTestMethod").invoke(method);
-            String methodName = (String) testMethod.getClass().getMethod("getMethodName").invoke(testMethod);
+            // Use direct TestNG API for method parameters
+            ITestNGMethod testMethod = method.getTestMethod();
+            String methodName = testMethod.getMethodName();
 
             // Also execute the simplified listener chain for backward compatibility
             TestNGListenerChain.getInstance().executeBeforeMethodInvocation(testContext, methodName);
 
-            Object currentXmlTest = testContext.getClass().getMethod("getCurrentXmlTest").invoke(testContext);
-            @SuppressWarnings("unchecked")
-            Map<String, String> methodParameters = (Map<String, String>) currentXmlTest.getClass().getMethod("getAllParameters").invoke(currentXmlTest);
+            Map<String, String> methodParameters = currentXmlTest.getAllParameters();
             if (methodParameters != null && !methodParameters.isEmpty()) {
                 parameterSource.addMethodParameters(methodName, methodParameters);
             }
         } catch (Exception e) {
-            // Silently ignore if TestNG classes are not available or reflection fails
+            // Silently ignore if TestNG classes are not available
         }
     }
 
@@ -323,8 +322,9 @@ public class TestNGParameterListener implements ITestListener, IInvokedMethodLis
         if (parameterSource != null) {
             try {
                 ITestContext testContext = testResult.getTestContext();
-                Object testMethod = method.getClass().getMethod("getTestMethod").invoke(method);
-                String methodName = (String) testMethod.getClass().getMethod("getMethodName").invoke(testMethod);
+                // Use direct TestNG API
+                ITestNGMethod testMethod = method.getTestMethod();
+                String methodName = testMethod.getMethodName();
 
                 // Also execute the simplified listener chain for backward compatibility
                 TestNGListenerChain.getInstance().executeAfterMethodInvocation(testContext, methodName);
@@ -334,7 +334,7 @@ public class TestNGParameterListener implements ITestListener, IInvokedMethodLis
                 log.debug("[ConfNG] Clearing current test context after method: {}", methodName);
                 parameterSource.setCurrentTestName(null);
             } catch (Exception e) {
-                // Silently ignore if TestNG classes are not available or reflection fails
+                // Silently ignore if TestNG classes are not available
             }
         }
     }

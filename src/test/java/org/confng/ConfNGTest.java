@@ -5,11 +5,16 @@ import org.confng.sources.EnvSource;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
+import org.confng.api.ConfigurationException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.testng.Assert.*;
 
@@ -41,7 +46,13 @@ public class ConfNGTest {
         TEST_CLASSPATH("test.classpath", null, false),
         TEST_VALUE("test.value", null, false),
         PROJECT_NAME("project.name", null, false),
-        AUTH_TOKEN("authToken", null, false);
+        AUTH_TOKEN("authToken", null, false),
+        // New keys for typed getter tests
+        LONG_VALUE("long.value", null, false),
+        DOUBLE_VALUE("double.value", null, false),
+        LIST_VALUE("list.value", null, false),
+        DURATION_VALUE("duration.value", null, false),
+        SENSITIVE_NUMBER("sensitive.number", null, true);
 
         private final String key;
         private final String defaultValue;
@@ -311,5 +322,536 @@ public class ConfNGTest {
 
         // Verify environment-specific values are loaded
         assertEquals(ConfNG.get(TestConfigKey.AUTH_TOKEN), "example-env1-token-replace-with-real");
+    }
+
+    // ==================== Typed Getter Tests ====================
+
+    @Test
+    public void getLongReturnsLongValue() {
+        System.setProperty("long.value", "9223372036854775807");
+        try {
+            Long result = ConfNG.getLong(TestConfigKey.LONG_VALUE);
+            assertEquals(result, Long.valueOf(Long.MAX_VALUE));
+        } finally {
+            System.clearProperty("long.value");
+        }
+    }
+
+    @Test
+    public void getLongReturnsNullWhenMissing() {
+        ConfNG.clearSourcesAndUseDefaults();
+        assertNull(ConfNG.getLong(TestConfigKey.LONG_VALUE));
+    }
+
+    @Test
+    public void getLongThrowsOnInvalidValue() {
+        System.setProperty("long.value", "not-a-number");
+        try {
+            ConfNG.getLong(TestConfigKey.LONG_VALUE);
+            fail("Should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Expected long"));
+        } finally {
+            System.clearProperty("long.value");
+        }
+    }
+
+    @Test
+    public void getDoubleReturnsDoubleValue() {
+        System.setProperty("double.value", "3.14159");
+        try {
+            Double result = ConfNG.getDouble(TestConfigKey.DOUBLE_VALUE);
+            assertEquals(result, 3.14159, 0.00001);
+        } finally {
+            System.clearProperty("double.value");
+        }
+    }
+
+    @Test
+    public void getDoubleReturnsNullWhenMissing() {
+        ConfNG.clearSourcesAndUseDefaults();
+        assertNull(ConfNG.getDouble(TestConfigKey.DOUBLE_VALUE));
+    }
+
+    @Test
+    public void getDoubleThrowsOnInvalidValue() {
+        System.setProperty("double.value", "not-a-number");
+        try {
+            ConfNG.getDouble(TestConfigKey.DOUBLE_VALUE);
+            fail("Should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Expected double"));
+        } finally {
+            System.clearProperty("double.value");
+        }
+    }
+
+    @Test
+    public void getListReturnsListOfStrings() {
+        System.setProperty("list.value", "a, b, c, d");
+        try {
+            List<String> result = ConfNG.getList(TestConfigKey.LIST_VALUE);
+            assertEquals(result.size(), 4);
+            assertEquals(result.get(0), "a");
+            assertEquals(result.get(1), "b");
+            assertEquals(result.get(2), "c");
+            assertEquals(result.get(3), "d");
+        } finally {
+            System.clearProperty("list.value");
+        }
+    }
+
+    @Test
+    public void getListWithCustomDelimiter() {
+        System.setProperty("list.value", "a|b|c");
+        try {
+            List<String> result = ConfNG.getList(TestConfigKey.LIST_VALUE, "|");
+            assertEquals(result.size(), 3);
+            assertEquals(result.get(0), "a");
+            assertEquals(result.get(1), "b");
+            assertEquals(result.get(2), "c");
+        } finally {
+            System.clearProperty("list.value");
+        }
+    }
+
+    @Test
+    public void getListReturnsEmptyListForEmptyValue() {
+        System.setProperty("list.value", "");
+        try {
+            List<String> result = ConfNG.getList(TestConfigKey.LIST_VALUE);
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+        } finally {
+            System.clearProperty("list.value");
+        }
+    }
+
+    @Test
+    public void getListReturnsNullWhenMissing() {
+        ConfNG.clearSourcesAndUseDefaults();
+        assertNull(ConfNG.getList(TestConfigKey.LIST_VALUE));
+    }
+
+    @Test
+    public void getDurationReturnsSecondsFormat() {
+        System.setProperty("duration.value", "30s");
+        try {
+            Duration result = ConfNG.getDuration(TestConfigKey.DURATION_VALUE);
+            assertEquals(result, Duration.ofSeconds(30));
+        } finally {
+            System.clearProperty("duration.value");
+        }
+    }
+
+    @Test
+    public void getDurationReturnsMinutesFormat() {
+        System.setProperty("duration.value", "5m");
+        try {
+            Duration result = ConfNG.getDuration(TestConfigKey.DURATION_VALUE);
+            assertEquals(result, Duration.ofMinutes(5));
+        } finally {
+            System.clearProperty("duration.value");
+        }
+    }
+
+    @Test
+    public void getDurationReturnsHoursFormat() {
+        System.setProperty("duration.value", "2h");
+        try {
+            Duration result = ConfNG.getDuration(TestConfigKey.DURATION_VALUE);
+            assertEquals(result, Duration.ofHours(2));
+        } finally {
+            System.clearProperty("duration.value");
+        }
+    }
+
+    @Test
+    public void getDurationReturnsDaysFormat() {
+        System.setProperty("duration.value", "1d");
+        try {
+            Duration result = ConfNG.getDuration(TestConfigKey.DURATION_VALUE);
+            assertEquals(result, Duration.ofDays(1));
+        } finally {
+            System.clearProperty("duration.value");
+        }
+    }
+
+    @Test
+    public void getDurationReturnsMillisecondsFormat() {
+        System.setProperty("duration.value", "500ms");
+        try {
+            Duration result = ConfNG.getDuration(TestConfigKey.DURATION_VALUE);
+            assertEquals(result, Duration.ofMillis(500));
+        } finally {
+            System.clearProperty("duration.value");
+        }
+    }
+
+    @Test
+    public void getDurationReturnsIso8601Format() {
+        System.setProperty("duration.value", "PT30S");
+        try {
+            Duration result = ConfNG.getDuration(TestConfigKey.DURATION_VALUE);
+            assertEquals(result, Duration.ofSeconds(30));
+        } finally {
+            System.clearProperty("duration.value");
+        }
+    }
+
+    @Test
+    public void getDurationReturnsNullWhenMissing() {
+        ConfNG.clearSourcesAndUseDefaults();
+        assertNull(ConfNG.getDuration(TestConfigKey.DURATION_VALUE));
+    }
+
+    @Test
+    public void getDurationThrowsOnInvalidValue() {
+        System.setProperty("duration.value", "invalid-duration");
+        try {
+            ConfNG.getDuration(TestConfigKey.DURATION_VALUE);
+            fail("Should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Expected duration"));
+        } finally {
+            System.clearProperty("duration.value");
+        }
+    }
+
+    @Test
+    public void typedGettersMaskSensitiveValuesInErrors() {
+        System.setProperty("sensitive.number", "not-a-number");
+        try {
+            ConfNG.getLong(TestConfigKey.SENSITIVE_NUMBER);
+            fail("Should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("***MASKED***"));
+            assertFalse(e.getMessage().contains("not-a-number"));
+        } finally {
+            System.clearProperty("sensitive.number");
+        }
+    }
+
+    // ==================== Optional/Required Configuration Tests ====================
+
+    @Test
+    public void getOptionalReturnsValueWhenPresent() {
+        System.setProperty("browser", "firefox");
+        try {
+            Optional<String> result = ConfNG.getOptional(TestConfigKey.BROWSER);
+            assertTrue(result.isPresent());
+            assertEquals(result.get(), "firefox");
+        } finally {
+            System.clearProperty("browser");
+        }
+    }
+
+    @Test
+    public void getOptionalReturnsDefaultWhenMissing() {
+        ConfNG.clearSourcesAndUseDefaults();
+        Optional<String> result = ConfNG.getOptional(TestConfigKey.BROWSER);
+        assertTrue(result.isPresent());
+        assertEquals(result.get(), "chrome"); // default value
+    }
+
+    @Test
+    public void getOptionalReturnsEmptyWhenMissingAndNoDefault() {
+        ConfNG.clearSourcesAndUseDefaults();
+        Optional<String> result = ConfNG.getOptional(TestConfigKey.APP_NAME);
+        assertFalse(result.isPresent());
+    }
+
+    @Test
+    public void getRequiredReturnsValueWhenPresent() {
+        System.setProperty("browser", "edge");
+        try {
+            String result = ConfNG.getRequired(TestConfigKey.BROWSER);
+            assertEquals(result, "edge");
+        } finally {
+            System.clearProperty("browser");
+        }
+    }
+
+    @Test
+    public void getRequiredReturnsDefaultWhenMissing() {
+        ConfNG.clearSourcesAndUseDefaults();
+        String result = ConfNG.getRequired(TestConfigKey.BROWSER);
+        assertEquals(result, "chrome"); // default value
+    }
+
+    @Test
+    public void getRequiredThrowsWhenMissingAndNoDefault() {
+        ConfNG.clearSourcesAndUseDefaults();
+        try {
+            ConfNG.getRequired(TestConfigKey.APP_NAME);
+            fail("Should have thrown ConfigurationException");
+        } catch (ConfigurationException e) {
+            assertEquals(e.getKey(), "app.name");
+            assertTrue(e.getMessage().contains("app.name"));
+        }
+    }
+
+    @Test
+    public void getOrDefaultReturnsValueWhenPresent() {
+        System.setProperty("browser", "safari");
+        try {
+            String result = ConfNG.getOrDefault(TestConfigKey.BROWSER, "fallback");
+            assertEquals(result, "safari");
+        } finally {
+            System.clearProperty("browser");
+        }
+    }
+
+    @Test
+    public void getOrDefaultReturnsKeyDefaultWhenMissing() {
+        ConfNG.clearSourcesAndUseDefaults();
+        String result = ConfNG.getOrDefault(TestConfigKey.BROWSER, "fallback");
+        assertEquals(result, "chrome"); // key's default takes precedence
+    }
+
+    @Test
+    public void getOrDefaultReturnsFallbackWhenMissingAndNoKeyDefault() {
+        ConfNG.clearSourcesAndUseDefaults();
+        String result = ConfNG.getOrDefault(TestConfigKey.APP_NAME, "fallback-app");
+        assertEquals(result, "fallback-app");
+    }
+
+    @Test
+    public void getOrDefaultReturnsNullFallbackWhenProvided() {
+        ConfNG.clearSourcesAndUseDefaults();
+        String result = ConfNG.getOrDefault(TestConfigKey.APP_NAME, null);
+        assertNull(result);
+    }
+
+    // ==================== Configuration Source Diagnostics Tests ====================
+
+    @Test
+    public void getSourceInfoReturnsSourceName() {
+        System.setProperty("browser", "firefox");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.refresh(); // Force re-resolution
+
+            org.confng.api.ConfigSourceInfo info = ConfNG.getSourceInfo(TestConfigKey.BROWSER);
+
+            assertNotNull(info);
+            assertTrue(info.isFound());
+            assertEquals(info.getSourceName(), "SystemProperties");
+            assertEquals(info.getValue(), "firefox");
+            assertFalse(info.isFromDefault());
+        } finally {
+            System.clearProperty("browser");
+        }
+    }
+
+    @Test
+    public void getSourceInfoReturnsDefaultWhenNoSource() {
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.refresh();
+
+        org.confng.api.ConfigSourceInfo info = ConfNG.getSourceInfo(TestConfigKey.BROWSER);
+
+        assertNotNull(info);
+        assertTrue(info.isFound());
+        assertTrue(info.isFromDefault());
+        assertEquals(info.getSourceName(), "Default");
+        assertEquals(info.getValue(), "chrome");
+    }
+
+    @Test
+    public void getSourceInfoReturnsNotFoundWhenMissing() {
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.refresh();
+
+        org.confng.api.ConfigSourceInfo info = ConfNG.getSourceInfo(TestConfigKey.APP_NAME);
+
+        assertNotNull(info);
+        assertFalse(info.isFound());
+        assertNull(info.getSourceName());
+    }
+
+    @Test
+    public void getSourceInfoMasksSensitiveValues() {
+        System.setProperty("api.key", "secret-value");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.refresh();
+
+            org.confng.api.ConfigSourceInfo info = ConfNG.getSourceInfo(TestConfigKey.API_KEY);
+
+            assertTrue(info.isSensitive());
+            assertEquals(info.getValue(), "***MASKED***");
+            assertEquals(info.getRawValue(), "secret-value");
+        } finally {
+            System.clearProperty("api.key");
+        }
+    }
+
+    @Test
+    public void getSourceInfoReturnsPriority() {
+        System.setProperty("browser", "edge");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.refresh();
+
+            org.confng.api.ConfigSourceInfo info = ConfNG.getSourceInfo(TestConfigKey.BROWSER);
+
+            // SystemPropertySource has priority 50
+            assertEquals(info.getPriority(), 50);
+        } finally {
+            System.clearProperty("browser");
+        }
+    }
+
+    @Test
+    public void getAllSourceInfoReturnsMultipleKeys() {
+        System.setProperty("browser", "chrome");
+        System.setProperty("timeout", "60");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.refresh();
+
+            java.util.Map<String, org.confng.api.ConfigSourceInfo> infos =
+                ConfNG.getAllSourceInfo(TestConfigKey.BROWSER, TestConfigKey.TIMEOUT);
+
+            assertEquals(infos.size(), 2);
+            assertTrue(infos.containsKey("browser"));
+            assertTrue(infos.containsKey("timeout"));
+            assertEquals(infos.get("browser").getValue(), "chrome");
+            assertEquals(infos.get("timeout").getValue(), "60");
+        } finally {
+            System.clearProperty("browser");
+            System.clearProperty("timeout");
+        }
+    }
+
+    @Test
+    public void getSourceInfoToStringContainsDetails() {
+        System.setProperty("browser", "safari");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.refresh();
+
+            org.confng.api.ConfigSourceInfo info = ConfNG.getSourceInfo(TestConfigKey.BROWSER);
+            String str = info.toString();
+
+            assertTrue(str.contains("browser"));
+            assertTrue(str.contains("SystemProperties"));
+            assertTrue(str.contains("safari"));
+        } finally {
+            System.clearProperty("browser");
+        }
+    }
+
+    // ==================== Prefix-based Configuration Retrieval Tests ====================
+
+    @Test
+    public void getByPrefixReturnsMatchingKeys() {
+        System.setProperty("db.host", "localhost");
+        System.setProperty("db.port", "5432");
+        System.setProperty("db.user", "admin");
+        System.setProperty("api.url", "https://api.example.com");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.refresh();
+
+            java.util.Map<String, String> dbConfig = ConfNG.getByPrefix("db.");
+
+            assertEquals(dbConfig.size(), 3);
+            assertEquals(dbConfig.get("db.host"), "localhost");
+            assertEquals(dbConfig.get("db.port"), "5432");
+            assertEquals(dbConfig.get("db.user"), "admin");
+            assertFalse(dbConfig.containsKey("api.url"));
+        } finally {
+            System.clearProperty("db.host");
+            System.clearProperty("db.port");
+            System.clearProperty("db.user");
+            System.clearProperty("api.url");
+        }
+    }
+
+    @Test
+    public void getByPrefixReturnsEmptyMapForNoMatches() {
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.refresh();
+
+        java.util.Map<String, String> result = ConfNG.getByPrefix("nonexistent.");
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void getByPrefixReturnsEmptyMapForNullPrefix() {
+        java.util.Map<String, String> result = ConfNG.getByPrefix(null);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void getByPrefixReturnsEmptyMapForEmptyPrefix() {
+        java.util.Map<String, String> result = ConfNG.getByPrefix("");
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void getKeysWithPrefixReturnsMatchingKeys() {
+        System.setProperty("app.name", "MyApp");
+        System.setProperty("app.version", "1.0");
+        System.setProperty("other.key", "value");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.refresh();
+
+            java.util.Set<String> appKeys = ConfNG.getKeysWithPrefix("app.");
+
+            assertEquals(appKeys.size(), 2);
+            assertTrue(appKeys.contains("app.name"));
+            assertTrue(appKeys.contains("app.version"));
+            assertFalse(appKeys.contains("other.key"));
+        } finally {
+            System.clearProperty("app.name");
+            System.clearProperty("app.version");
+            System.clearProperty("other.key");
+        }
+    }
+
+    @Test
+    public void getKeysWithPrefixReturnsEmptySetForNoMatches() {
+        ConfNG.clearSourcesAndUseDefaults();
+        ConfNG.refresh();
+
+        java.util.Set<String> result = ConfNG.getKeysWithPrefix("nonexistent.");
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void getByPrefixWithInfoReturnsSourceInfo() {
+        System.setProperty("db.host", "localhost");
+        System.setProperty("db.port", "5432");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.refresh();
+
+            java.util.List<ConfNGKey> keys = java.util.Arrays.asList(
+                TestConfigKey.DB_HOST, TestConfigKey.DB_PORT, TestConfigKey.BROWSER
+            );
+            java.util.Map<String, org.confng.api.ConfigSourceInfo> dbInfo =
+                ConfNG.getByPrefixWithInfo("db.", keys);
+
+            assertEquals(dbInfo.size(), 2);
+            assertTrue(dbInfo.containsKey("db.host"));
+            assertTrue(dbInfo.containsKey("db.port"));
+            assertEquals(dbInfo.get("db.host").getValue(), "localhost");
+            assertEquals(dbInfo.get("db.port").getValue(), "5432");
+        } finally {
+            System.clearProperty("db.host");
+            System.clearProperty("db.port");
+        }
     }
 }

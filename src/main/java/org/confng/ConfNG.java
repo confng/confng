@@ -1,19 +1,16 @@
 package org.confng;
 
 import org.confng.api.ConfNGKey;
+import org.confng.api.ConfigurationException;
+import org.confng.internal.ConfigDiscovery;
+import org.confng.internal.ConfigLoader;
+import org.confng.internal.ConfigResolver;
 import org.confng.sources.*;
-import org.confng.util.FileResolver;
 
-import org.reflections.Reflections;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Main configuration management class for ConfNG.
@@ -150,9 +147,11 @@ public class ConfNG {
         }
     }
 
-    private static final List<ConfigSource> sources = new ArrayList<>();
-    private static final Map<String, String> resolvedValues = new HashMap<>();
-    private static boolean isResolved = false;
+    private static final List<ConfigSource> sources = new CopyOnWriteArrayList<>();
+    private static final ConfigResolver resolver = new ConfigResolver(
+        () -> sources,
+        () -> ConfigDiscovery.discoverAllConfigKeys()
+    );
 
     static {
         // Default precedence: Env, System properties, Properties files, JSON files, YAML files, TOML files
@@ -162,7 +161,7 @@ public class ConfNG {
 
     public static void registerSource(ConfigSource source) {
         sources.add(source);
-        invalidateResolution();
+        resolver.invalidate();
     }
 
     public static void registerSourceAt(int precedenceIndex, ConfigSource source) {
@@ -170,13 +169,13 @@ public class ConfNG {
             throw new IllegalArgumentException("Invalid precedence index: " + precedenceIndex);
         }
         sources.add(precedenceIndex, source);
-        invalidateResolution();
+        resolver.invalidate();
     }
 
     /**
      * Adds a configuration source with automatic priority-based ordering.
      * Sources with higher priority values are placed earlier in the resolution chain.
-     * 
+     *
      * @param source the configuration source to add
      */
     public static void addSource(ConfigSource source) {
@@ -187,7 +186,7 @@ public class ConfNG {
         // Find the correct position based on priority
         int insertIndex = 0;
         int sourcePriority = source.getPriority();
-        
+
         for (int i = 0; i < sources.size(); i++) {
             if (sources.get(i).getPriority() < sourcePriority) {
                 insertIndex = i;
@@ -195,24 +194,16 @@ public class ConfNG {
             }
             insertIndex = i + 1;
         }
-        
+
         sources.add(insertIndex, source);
-        invalidateResolution();
+        resolver.invalidate();
     }
 
     public static void clearSourcesAndUseDefaults() {
         sources.clear();
         sources.add(new EnvSource());
         sources.add(new SystemPropertySource());
-        invalidateResolution();
-    }
-
-    /**
-     * Invalidates the current resolution cache, forcing re-resolution on next access.
-     */
-    private static void invalidateResolution() {
-        isResolved = false;
-        resolvedValues.clear();
+        resolver.invalidate();
     }
 
     /**
@@ -224,45 +215,7 @@ public class ConfNG {
      * @param filePath path to the configuration file (filesystem or classpath)
      */
     public static void load(String filePath) {
-        // Resolve the file using FileResolver
-        FileResolver.ResolvedFile resolved = FileResolver.resolve(filePath);
-
-        // If file doesn't exist in either location, skip silently
-        if (resolved == null || !resolved.exists()) {
-            return;
-        }
-
-        String fileName = resolved.getFileName().toLowerCase();
-
-        // Check file type and load accordingly
-        if (fileName.endsWith(".properties")) {
-            try {
-                registerSource(new PropertiesSource(filePath));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load properties file: " + filePath, e);
-            }
-        } else if (fileName.endsWith(".json")) {
-            try {
-                registerSource(new JsonSource(filePath));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load JSON file: " + filePath, e);
-            }
-        } else if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) {
-            try {
-                registerSource(new YamlSource(filePath));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load YAML file: " + filePath, e);
-            }
-        } else if (fileName.endsWith(".toml")) {
-            try {
-                registerSource(new TomlSource(filePath));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load TOML file: " + filePath, e);
-            }
-        } else {
-            throw new IllegalArgumentException("Unsupported file type: " + fileName +
-                ". Supported types: .properties, .json, .yaml, .yml, .toml");
-        }
+        ConfigLoader.load(filePath, ConfNG::registerSource);
     }
 
     /**
@@ -276,45 +229,7 @@ public class ConfNG {
      * @param environment the environment section to load (e.g., "uat", "beta", "qa", "prod")
      */
     public static void load(String filePath, String environment) {
-        // Resolve the file using FileResolver
-        FileResolver.ResolvedFile resolved = FileResolver.resolve(filePath);
-
-        // If file doesn't exist in either location, skip silently
-        if (resolved == null || !resolved.exists()) {
-            return;
-        }
-
-        String fileName = resolved.getFileName().toLowerCase();
-
-        // Check file type and load accordingly
-        if (fileName.endsWith(".properties")) {
-            throw new IllegalArgumentException("Properties files don't support environment sections. " +
-                "Use load(filePath) instead or use separate files per environment.");
-        } else if (fileName.endsWith(".json")) {
-            try {
-                registerSource(new JsonSource(filePath, environment));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load JSON file: " + filePath +
-                    " for environment: " + environment, e);
-            }
-        } else if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) {
-            try {
-                registerSource(new YamlSource(filePath, environment));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load YAML file: " + filePath +
-                    " for environment: " + environment, e);
-            }
-        } else if (fileName.endsWith(".toml")) {
-            try {
-                registerSource(new TomlSource(filePath, environment));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load TOML file: " + filePath +
-                    " for environment: " + environment, e);
-            }
-        } else {
-            throw new IllegalArgumentException("Unsupported file type: " + fileName +
-                ". Supported types for environment sections: .json, .yaml, .yml, .toml");
-        }
+        ConfigLoader.load(filePath, environment, ConfNG::registerSource);
     }
 
     /**
@@ -326,14 +241,7 @@ public class ConfNG {
      * @param filePath path to the properties file (filesystem or classpath)
      */
     public static void loadProperties(String filePath) {
-        if (!FileResolver.exists(filePath)) {
-            return; // Skip silently if file doesn't exist
-        }
-        try {
-            registerSource(new PropertiesSource(filePath));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load properties file: " + filePath, e);
-        }
+        ConfigLoader.loadProperties(filePath, ConfNG::registerSource);
     }
 
     /**
@@ -345,14 +253,7 @@ public class ConfNG {
      * @param filePath path to the JSON file (filesystem or classpath)
      */
     public static void loadJson(String filePath) {
-        if (!FileResolver.exists(filePath)) {
-            return; // Skip silently if file doesn't exist
-        }
-        try {
-            registerSource(new JsonSource(filePath));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load JSON file: " + filePath, e);
-        }
+        ConfigLoader.loadJson(filePath, null, ConfNG::registerSource);
     }
 
     /**
@@ -364,14 +265,7 @@ public class ConfNG {
      * @param filePath path to the YAML file (filesystem or classpath)
      */
     public static void loadYaml(String filePath) {
-        if (!FileResolver.exists(filePath)) {
-            return; // Skip silently if file doesn't exist
-        }
-        try {
-            registerSource(new YamlSource(filePath));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load YAML file: " + filePath, e);
-        }
+        ConfigLoader.loadYaml(filePath, null, ConfNG::registerSource);
     }
 
     /**
@@ -384,14 +278,7 @@ public class ConfNG {
      * @param filePath path to the TOML file (filesystem or classpath)
      */
     public static void loadToml(String filePath) {
-        if (!FileResolver.exists(filePath)) {
-            return; // Skip silently if file doesn't exist
-        }
-        try {
-            registerSource(new TomlSource(filePath));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load TOML file: " + filePath, e);
-        }
+        ConfigLoader.loadToml(filePath, null, ConfNG::registerSource);
     }
 
     /**
@@ -405,15 +292,7 @@ public class ConfNG {
      * @param environment the environment section to load (e.g., "uat", "beta", "qa", "prod")
      */
     public static void loadToml(String filePath, String environment) {
-        if (!FileResolver.exists(filePath)) {
-            return; // Skip silently if file doesn't exist
-        }
-        try {
-            registerSource(new TomlSource(filePath, environment));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load TOML file: " + filePath +
-                " for environment: " + environment, e);
-        }
+        ConfigLoader.loadToml(filePath, environment, ConfNG::registerSource);
     }
 
     /**
@@ -427,15 +306,7 @@ public class ConfNG {
      * @param environment the environment section to load (e.g., "uat", "beta", "qa", "prod")
      */
     public static void loadJson(String filePath, String environment) {
-        if (!FileResolver.exists(filePath)) {
-            return; // Skip silently if file doesn't exist
-        }
-        try {
-            registerSource(new JsonSource(filePath, environment));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load JSON file: " + filePath +
-                " for environment: " + environment, e);
-        }
+        ConfigLoader.loadJson(filePath, environment, ConfNG::registerSource);
     }
 
     /**
@@ -449,15 +320,7 @@ public class ConfNG {
      * @param environment the environment section to load (e.g., "uat", "beta", "qa", "prod")
      */
     public static void loadYaml(String filePath, String environment) {
-        if (!FileResolver.exists(filePath)) {
-            return; // Skip silently if file doesn't exist
-        }
-        try {
-            registerSource(new YamlSource(filePath, environment));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load YAML file: " + filePath +
-                " for environment: " + environment, e);
-        }
+        ConfigLoader.loadYaml(filePath, environment, ConfNG::registerSource);
     }
 
     /**
@@ -608,13 +471,7 @@ public class ConfNG {
      * @return the configuration value, or null if not found
      */
     private static String getConfigValue(String key) {
-        for (ConfigSource source : sources) {
-            Optional<String> value = source.get(key);
-            if (value.isPresent()) {
-                return value.get();
-            }
-        }
-        return null;
+        return resolver.getConfigValue(key);
     }
 
     /**
@@ -635,44 +492,7 @@ public class ConfNG {
      * @return the configuration value, or null if not found in any case variation
      */
     private static String getConfigValueCaseInsensitive(String key) {
-        if (key == null) {
-            return null;
-        }
-
-        // Try original case first
-        String value = getConfigValue(key);
-        if (value != null && !value.isEmpty()) {
-            return value;
-        }
-
-        // Try lowercase
-        String lowerKey = key.toLowerCase();
-        if (!lowerKey.equals(key)) {
-            value = getConfigValue(lowerKey);
-            if (value != null && !value.isEmpty()) {
-                return value;
-            }
-        }
-
-        // Try uppercase
-        String upperKey = key.toUpperCase();
-        if (!upperKey.equals(key)) {
-            value = getConfigValue(upperKey);
-            if (value != null && !value.isEmpty()) {
-                return value;
-            }
-        }
-
-        // Try title case (first letter uppercase, rest lowercase)
-        String titleKey = key.substring(0, 1).toUpperCase() + key.substring(1).toLowerCase();
-        if (!titleKey.equals(key) && !titleKey.equals(lowerKey) && !titleKey.equals(upperKey)) {
-            value = getConfigValue(titleKey);
-            if (value != null && !value.isEmpty()) {
-                return value;
-            }
-        }
-
-        return null;
+        return resolver.getConfigValueCaseInsensitive(key);
     }
 
     /**
@@ -690,211 +510,217 @@ public class ConfNG {
      * to force immediate resolution of all values.
      */
     public static void resolveAllValues() {
-        resolveAllValues(null);
+        resolver.resolveAll();
     }
 
     /**
      * Resolves configuration values for the specified keys from all sources.
      * If keys is null, attempts to discover all keys from known ConfNGKey implementations.
-     * 
+     *
      * @param keys specific keys to resolve, or null to discover all keys
      */
     public static void resolveAllValues(Set<String> keys) {
-        if (isResolved && keys == null) {
-            return; // Already resolved and no specific keys requested
-        }
-
-        Set<String> keysToResolve = keys;
-        if (keysToResolve == null) {
-            // Discover all keys from ConfNGKey implementations
-            keysToResolve = new HashSet<>();
-            List<ConfNGKey> discoveredKeys = discoverAllConfigKeys();
-            for (ConfNGKey configKey : discoveredKeys) {
-                keysToResolve.add(configKey.getKey());
-            }
-            
-            // Also add any keys that sources might know about
-            for (ConfigSource source : sources) {
-                if (source instanceof EnvSource) {
-                    // Add all environment variables
-                    keysToResolve.addAll(System.getenv().keySet());
-                } else if (source instanceof SystemPropertySource) {
-                    // Add all system properties
-                    for (Object key : System.getProperties().keySet()) {
-                        keysToResolve.add(key.toString());
-                    }
-                }
-            }
-        }
-
-        // Clear existing resolved values if we're doing a full resolution
-        if (keys == null) {
-            resolvedValues.clear();
-        }
-
-        // Resolve values according to source precedence
-        for (String key : keysToResolve) {
-            if (keys != null && resolvedValues.containsKey(key)) {
-                continue; // Skip if already resolved and we're doing partial resolution
-            }
-            
-            for (ConfigSource source : sources) {
-                Optional<String> value = source.get(key);
-                if (value.isPresent()) {
-                    resolvedValues.put(key, value.get());
-                    break; // First source wins (precedence order)
-                }
-            }
-        }
-
-        if (keys == null) {
-            isResolved = true;
-        }
+        resolver.resolveAll(keys);
     }
-
-
 
     /**
      * Gets a configuration value for the given key.
-     * 
+     *
      * @param key the configuration key
      * @return the configuration value, or the default value if not found
      */
     public static String get(ConfNGKey key) {
-        String k = key.getKey();
-        // Check if the highest-priority source is TestNGParameterSource
-        if (!sources.isEmpty() && sources.get(0) instanceof org.confng.sources.TestNGParameterSource) {
-            for (ConfigSource source : sources) {
-                if (source instanceof org.confng.sources.TestNGParameterSource) {
-                    Optional<String> value = source.get(k);
-                    if (value.isPresent()) {
-                        return value.get();
-                    }
-                }
-            }
-        }
-        // Otherwise, use cache as before
-        ensureResolved();
-        String value = resolvedValues.get(k);
-        if (value == null && !resolvedValues.containsKey(k)) {
-            Set<String> singleKey = new HashSet<>();
-            singleKey.add(k);
-            resolveAllValues(singleKey);
-            value = resolvedValues.get(k);
-        }
-        return value != null ? value : key.getDefaultValue();
+        return resolver.get(key);
     }
 
     /**
-     * Ensures that configuration values are resolved.
-     * If not already resolved, triggers resolution of all discoverable keys.
+     * Gets a configuration value as an Optional.
+     * Returns Optional.empty() if the value is not found and has no default.
+     *
+     * <p>This method is useful when you want to handle missing configuration
+     * gracefully without null checks:</p>
+     * <pre>{@code
+     * Optional<String> dbUrl = ConfNG.getOptional(MyConfig.DATABASE_URL);
+     * dbUrl.ifPresent(url -> connectToDatabase(url));
+     * }</pre>
+     *
+     * @param key the configuration key
+     * @return an Optional containing the value if present, empty otherwise
+     * @since 1.1.0
      */
-    private static void ensureResolved() {
-        if (!isResolved) {
-            resolveAllValues();
-        }
+    public static Optional<String> getOptional(ConfNGKey key) {
+        return resolver.getOptional(key);
+    }
+
+    /**
+     * Gets a required configuration value.
+     * Throws ConfigurationException if the value is not found and has no default.
+     *
+     * <p>Use this method when a configuration value is mandatory and the application
+     * cannot proceed without it:</p>
+     * <pre>{@code
+     * try {
+     *     String dbUrl = ConfNG.getRequired(MyConfig.DATABASE_URL);
+     *     connectToDatabase(dbUrl);
+     * } catch (ConfigurationException e) {
+     *     System.err.println("Missing required config: " + e.getKey());
+     *     System.exit(1);
+     * }
+     * }</pre>
+     *
+     * @param key the configuration key
+     * @return the configuration value (never null)
+     * @throws ConfigurationException if the value is not found and has no default
+     * @since 1.1.0
+     */
+    public static String getRequired(ConfNGKey key) {
+        return resolver.getRequired(key);
+    }
+
+    /**
+     * Gets a configuration value with a fallback default.
+     * Returns the provided default if the value is not found and the key has no default.
+     *
+     * <p>This method is useful when you want to provide a runtime default that
+     * differs from the key's compile-time default:</p>
+     * <pre>{@code
+     * String timeout = ConfNG.getOrDefault(MyConfig.TIMEOUT, "60");
+     * }</pre>
+     *
+     * @param key the configuration key
+     * @param defaultValue the fallback default value
+     * @return the configuration value, or the provided default if not found
+     * @since 1.1.0
+     */
+    public static String getOrDefault(ConfNGKey key, String defaultValue) {
+        return resolver.getOrDefault(key, defaultValue);
     }
 
     /**
      * Gets a configuration value as an integer.
-     * 
+     *
      * @param key the configuration key
      * @return the configuration value as integer, or null if not found and no default
      * @throws IllegalArgumentException if the value cannot be converted to integer
      */
     public static Integer getInt(ConfNGKey key) {
-        String value = get(key);
-        if (value == null) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            String displayValue = key.isSensitive() ? "***MASKED***" : value;
-            throw new IllegalArgumentException("Expected integer for key '" + key.getKey() + "' but got: " + displayValue, e);
-        }
+        return resolver.getInt(key);
     }
 
     /**
      * Gets a configuration value as a boolean.
-     * 
+     *
      * @param key the configuration key
      * @return the configuration value as boolean, or null if not found and no default
      * @throws IllegalArgumentException if the value cannot be converted to boolean
      */
     public static Boolean getBoolean(ConfNGKey key) {
-        String value = get(key);
-        if (value == null) {
-            return null;
-        }
-        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-            return Boolean.parseBoolean(value);
-        }
-        String displayValue = key.isSensitive() ? "***MASKED***" : value;
-        throw new IllegalArgumentException("Expected boolean for key '" + key.getKey() + "' but got: " + displayValue);
+        return resolver.getBoolean(key);
+    }
+
+    /**
+     * Gets a configuration value as a long.
+     *
+     * @param key the configuration key
+     * @return the configuration value as long, or null if not found and no default
+     * @throws IllegalArgumentException if the value cannot be converted to long
+     * @since 1.1.0
+     */
+    public static Long getLong(ConfNGKey key) {
+        return resolver.getLong(key);
+    }
+
+    /**
+     * Gets a configuration value as a double.
+     *
+     * @param key the configuration key
+     * @return the configuration value as double, or null if not found and no default
+     * @throws IllegalArgumentException if the value cannot be converted to double
+     * @since 1.1.0
+     */
+    public static Double getDouble(ConfNGKey key) {
+        return resolver.getDouble(key);
+    }
+
+    /**
+     * Gets a configuration value as a list of strings.
+     * Values are split by comma and trimmed.
+     *
+     * <p>Example: "a, b, c" becomes ["a", "b", "c"]</p>
+     *
+     * @param key the configuration key
+     * @return the configuration value as a list, or null if not found and no default
+     * @since 1.1.0
+     */
+    public static java.util.List<String> getList(ConfNGKey key) {
+        return resolver.getList(key);
+    }
+
+    /**
+     * Gets a configuration value as a list of strings with a custom delimiter.
+     *
+     * @param key the configuration key
+     * @param delimiter the delimiter to split values
+     * @return the configuration value as a list, or null if not found and no default
+     * @since 1.1.0
+     */
+    public static java.util.List<String> getList(ConfNGKey key, String delimiter) {
+        return resolver.getList(key, delimiter);
+    }
+
+    /**
+     * Gets a configuration value as a Duration.
+     * Supports formats: "30s" (seconds), "5m" (minutes), "2h" (hours), "1d" (days),
+     * "500ms" (milliseconds), or ISO-8601 duration format (e.g., "PT30S").
+     *
+     * <p>Examples:</p>
+     * <ul>
+     *   <li>"30s" - 30 seconds</li>
+     *   <li>"5m" - 5 minutes</li>
+     *   <li>"2h" - 2 hours</li>
+     *   <li>"1d" - 1 day</li>
+     *   <li>"500ms" - 500 milliseconds</li>
+     *   <li>"PT30S" - ISO-8601 format for 30 seconds</li>
+     * </ul>
+     *
+     * @param key the configuration key
+     * @return the configuration value as Duration, or null if not found and no default
+     * @throws IllegalArgumentException if the value cannot be parsed as a duration
+     * @since 1.1.0
+     */
+    public static java.time.Duration getDuration(ConfNGKey key) {
+        return resolver.getDuration(key);
     }
 
     /**
      * Gets a configuration value with masking for sensitive data.
-     * 
+     *
      * @param key the configuration key
      * @return the configuration value, masked if sensitive
      */
     public static String getForDisplay(ConfNGKey key) {
-        String value = get(key);
-        if (value == null) {
-            return null;
-        }
-        return key.isSensitive() ? "***MASKED***" : value;
+        return resolver.getForDisplay(key);
     }
 
     /**
      * Gets all configuration values for display purposes.
      * Sensitive values are masked.
-     * 
+     *
      * @param keys the configuration keys to display
      * @return a formatted string showing all configuration values
      */
     public static String getAllForDisplay(ConfNGKey... keys) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Configuration Values:\n");
-        for (ConfNGKey key : keys) {
-            String value = getForDisplay(key);
-            sb.append("  ").append(key.getKey()).append(" = ").append(value);
-            if (key.isSensitive()) {
-                sb.append(" (sensitive)");
-            }
-            sb.append("\n");
-        }
-        return sb.toString();
+        return resolver.getAllForDisplay(keys);
     }
 
     /**
      * Discovers all ConfNGKey implementations in the classpath.
-     * 
+     *
      * @param basePackages packages to scan, if empty scans entire classpath
      * @return list of discovered configuration keys
      */
     public static List<ConfNGKey> discoverAllConfigKeys(String... basePackages) {
-        List<ConfNGKey> discovered = new ArrayList<>();
-        List<String> packages = (basePackages == null || basePackages.length == 0)
-                ? Arrays.asList("")
-                : Arrays.asList(basePackages);
-        for (String p : packages) {
-            Reflections reflections = (p == null || p.isEmpty()) ? new Reflections() : new Reflections(p);
-            Set<Class<? extends ConfNGKey>> subtypes = reflections.getSubTypesOf(ConfNGKey.class);
-            for (Class<? extends ConfNGKey> cls : subtypes) {
-                if (cls.isEnum()) {
-                    Object[] constants = cls.getEnumConstants();
-                    if (constants != null) {
-                        for (Object c : constants) {
-                            discovered.add((ConfNGKey) c);
-                        }
-                    }
-                }
-            }
-        }
-        return discovered;
+        return ConfigDiscovery.discoverAllConfigKeys(basePackages);
     }
 
     /**
@@ -902,35 +728,196 @@ public class ConfNG {
      * Useful when configuration sources might have changed.
      */
     public static void refresh() {
-        invalidateResolution();
-        resolveAllValues();
+        resolver.refresh();
     }
 
     /**
      * Gets the number of resolved configuration values.
-     * 
+     *
      * @return number of resolved values
      */
     public static int getResolvedValueCount() {
-        return resolvedValues.size();
+        return resolver.getResolvedValueCount();
     }
 
     /**
      * Checks if configuration values have been resolved.
-     * 
+     *
      * @return true if values are resolved, false otherwise
      */
     public static boolean isResolved() {
-        return isResolved;
+        return resolver.isResolved();
     }
 
     /**
      * Gets all resolved configuration keys.
-     * 
+     *
      * @return set of all resolved keys
      */
     public static Set<String> getResolvedKeys() {
-        ensureResolved();
-        return new HashSet<>(resolvedValues.keySet());
+        return resolver.getResolvedKeys();
+    }
+
+    /**
+     * Validates all discovered configuration keys against their defined constraints.
+     *
+     * <p>This method scans all ConfNGKey implementations for validation annotations
+     * ({@link org.confng.validation.Required}, {@link org.confng.validation.NotEmpty},
+     * {@link org.confng.validation.Pattern}, {@link org.confng.validation.Range})
+     * and checks that the resolved values satisfy all constraints.</p>
+     *
+     * <p>Example usage:</p>
+     * <pre>{@code
+     * ValidationResult result = ConfNG.validate();
+     * if (!result.isValid()) {
+     *     System.err.println(result.getSummary());
+     *     throw new RuntimeException("Configuration validation failed");
+     * }
+     * }</pre>
+     *
+     * @return the validation result containing any errors found
+     * @since 1.1.0
+     * @see org.confng.validation.ValidationResult
+     * @see org.confng.validation.Required
+     * @see org.confng.validation.NotEmpty
+     * @see org.confng.validation.Pattern
+     * @see org.confng.validation.Range
+     */
+    public static org.confng.validation.ValidationResult validate() {
+        return validate(discoverAllConfigKeys());
+    }
+
+    /**
+     * Validates the specified configuration keys against their defined constraints.
+     *
+     * @param keys the configuration keys to validate
+     * @return the validation result containing any errors found
+     * @since 1.1.0
+     * @see #validate()
+     */
+    public static org.confng.validation.ValidationResult validate(List<ConfNGKey> keys) {
+        org.confng.validation.ConfigValidator validator =
+            new org.confng.validation.ConfigValidator(ConfNG::get);
+        return validator.validate(keys);
+    }
+
+    /**
+     * Validates the specified configuration keys against their defined constraints.
+     *
+     * @param keys the configuration keys to validate
+     * @return the validation result containing any errors found
+     * @since 1.1.0
+     * @see #validate()
+     */
+    public static org.confng.validation.ValidationResult validate(ConfNGKey... keys) {
+        return validate(java.util.Arrays.asList(keys));
+    }
+
+    /**
+     * Gets information about which source provided the value for a configuration key.
+     *
+     * <p>This method is useful for debugging configuration issues and understanding
+     * the precedence of configuration sources:</p>
+     * <pre>{@code
+     * ConfigSourceInfo info = ConfNG.getSourceInfo(MyConfig.DATABASE_URL);
+     * System.out.println("Value: " + info.getValue());
+     * System.out.println("Source: " + info.getSourceName());
+     * System.out.println("Priority: " + info.getPriority());
+     * System.out.println("From default: " + info.isFromDefault());
+     * }</pre>
+     *
+     * @param key the configuration key
+     * @return source information including source name, priority, and value
+     * @since 1.1.0
+     * @see org.confng.api.ConfigSourceInfo
+     */
+    public static org.confng.api.ConfigSourceInfo getSourceInfo(ConfNGKey key) {
+        return resolver.getSourceInfo(key);
+    }
+
+    /**
+     * Gets source information for multiple configuration keys.
+     *
+     * @param keys the configuration keys to get info for
+     * @return map of key name to source information
+     * @since 1.1.0
+     * @see #getSourceInfo(ConfNGKey)
+     */
+    public static java.util.Map<String, org.confng.api.ConfigSourceInfo> getAllSourceInfo(ConfNGKey... keys) {
+        return resolver.getAllSourceInfo(keys);
+    }
+
+    /**
+     * Gets source information for a list of configuration keys.
+     *
+     * @param keys the configuration keys to get info for
+     * @return map of key name to source information
+     * @since 1.1.0
+     * @see #getSourceInfo(ConfNGKey)
+     */
+    public static java.util.Map<String, org.confng.api.ConfigSourceInfo> getAllSourceInfo(List<ConfNGKey> keys) {
+        return resolver.getAllSourceInfo(keys);
+    }
+
+    /**
+     * Gets all configuration values that match a given prefix.
+     *
+     * <p>This method is useful for retrieving groups of related configuration values:</p>
+     * <pre>{@code
+     * // Get all database-related configuration
+     * Map<String, String> dbConfig = ConfNG.getByPrefix("database.");
+     * // Returns: {"database.host": "localhost", "database.port": "5432", ...}
+     *
+     * // Get all API configuration
+     * Map<String, String> apiConfig = ConfNG.getByPrefix("api.");
+     * }</pre>
+     *
+     * @param prefix the prefix to match (e.g., "database." or "app.")
+     * @return map of matching keys to their values
+     * @since 1.1.0
+     */
+    public static java.util.Map<String, String> getByPrefix(String prefix) {
+        return resolver.getByPrefix(prefix);
+    }
+
+    /**
+     * Gets all configuration keys that match a given prefix.
+     *
+     * <p>This method returns only the key names, not the values:</p>
+     * <pre>{@code
+     * Set<String> dbKeys = ConfNG.getKeysWithPrefix("database.");
+     * // Returns: {"database.host", "database.port", "database.user", ...}
+     * }</pre>
+     *
+     * @param prefix the prefix to match (e.g., "database." or "app.")
+     * @return set of matching keys
+     * @since 1.1.0
+     */
+    public static Set<String> getKeysWithPrefix(String prefix) {
+        return resolver.getKeysWithPrefix(prefix);
+    }
+
+    /**
+     * Gets all configuration values that match a given prefix, with source information.
+     *
+     * <p>This method combines prefix matching with source diagnostics:</p>
+     * <pre>{@code
+     * List<ConfNGKey> allKeys = ConfNG.discoverAllConfigKeys();
+     * Map<String, ConfigSourceInfo> dbInfo = ConfNG.getByPrefixWithInfo("database.", allKeys);
+     * for (ConfigSourceInfo info : dbInfo.values()) {
+     *     System.out.println(info.getKey() + " from " + info.getSourceName());
+     * }
+     * }</pre>
+     *
+     * @param prefix the prefix to match
+     * @param keys the ConfNGKey implementations to check for prefix matching
+     * @return map of matching keys to their source information
+     * @since 1.1.0
+     * @see #getByPrefix(String)
+     * @see #getSourceInfo(ConfNGKey)
+     */
+    public static java.util.Map<String, org.confng.api.ConfigSourceInfo> getByPrefixWithInfo(
+            String prefix, List<ConfNGKey> keys) {
+        return resolver.getByPrefixWithInfo(prefix, keys);
     }
 }

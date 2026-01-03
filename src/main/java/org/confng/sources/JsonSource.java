@@ -3,13 +3,10 @@ package org.confng.sources;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import org.confng.util.FileResolver;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 
 /**
  * Configuration source that reads from JSON files.
@@ -37,13 +34,11 @@ import java.util.Optional;
  * @author GitHub: github.com/imBharatMalviya
  * @since 1.0
  * @see org.confng.sources.ConfigSource
+ * @see org.confng.sources.AbstractFileConfigSource
  */
-public class JsonSource implements ConfigSource {
+public class JsonSource extends AbstractFileConfigSource<JsonObject> {
 
     private static final Gson GSON = new Gson();
-    private final JsonObject root;
-    private final String sourceName;
-    private final String environment;
 
     /**
      * Creates a new JsonSource from the given file path (supports both filesystem and classpath).
@@ -53,7 +48,7 @@ public class JsonSource implements ConfigSource {
      * @throws IllegalStateException if the file cannot be loaded
      */
     public JsonSource(String filePath) {
-        this(filePath, null);
+        super(filePath);
     }
 
     /**
@@ -65,15 +60,7 @@ public class JsonSource implements ConfigSource {
      * @throws IllegalStateException if the file cannot be loaded or the environment section doesn't exist
      */
     public JsonSource(String filePath, String environment) {
-        this.environment = environment;
-
-        if (environment != null && !environment.isEmpty()) {
-            this.sourceName = "Json(" + filePath + ")[" + environment + "]";
-        } else {
-            this.sourceName = "Json(" + filePath + ")";
-        }
-
-        this.root = loadJsonFromString(filePath, environment);
+        super(filePath, environment);
     }
 
     /**
@@ -84,7 +71,7 @@ public class JsonSource implements ConfigSource {
      * @throws IllegalStateException if the file cannot be loaded
      */
     public JsonSource(Path file) {
-        this(file, null);
+        super(file);
     }
 
     /**
@@ -96,91 +83,43 @@ public class JsonSource implements ConfigSource {
      * @throws IllegalStateException if the file cannot be loaded or the environment section doesn't exist
      */
     public JsonSource(Path file, String environment) {
-        this.environment = environment;
-
-        if (environment != null && !environment.isEmpty()) {
-            this.sourceName = "Json(" + file.toString() + ")[" + environment + "]";
-        } else {
-            this.sourceName = "Json(" + file.toString() + ")";
-        }
-
-        this.root = loadJson(file, environment, file.toString());
-    }
-
-    /**
-     * Helper method to load JSON from a String path (supports classpath).
-     */
-    private JsonObject loadJsonFromString(String filePath, String environment) {
-        try (Reader reader = FileResolver.openReader(filePath)) {
-            JsonObject fullJson = GSON.fromJson(reader, JsonObject.class);
-
-            // If environment is specified, extract that section
-            if (environment != null && !environment.isEmpty()) {
-                JsonElement envElement = fullJson.get(environment);
-                if (envElement == null || !envElement.isJsonObject()) {
-                    throw new IllegalStateException("Environment section '" + environment +
-                        "' not found in JSON file: " + filePath);
-                }
-                return envElement.getAsJsonObject();
-            } else {
-                // Load all top-level keys
-                return fullJson;
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load json file: " + filePath, e);
-        }
-    }
-
-    /**
-     * Helper method to load JSON from a Path.
-     */
-    private JsonObject loadJson(Path file, String environment, String displayPath) {
-        try (Reader reader = Files.newBufferedReader(file)) {
-            JsonObject fullJson = GSON.fromJson(reader, JsonObject.class);
-
-            // If environment is specified, extract that section
-            if (environment != null && !environment.isEmpty()) {
-                JsonElement envElement = fullJson.get(environment);
-                if (envElement == null || !envElement.isJsonObject()) {
-                    throw new IllegalStateException("Environment section '" + environment +
-                        "' not found in JSON file: " + displayPath);
-                }
-                return envElement.getAsJsonObject();
-            } else {
-                // Load all top-level keys
-                return fullJson;
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load json file: " + displayPath, e);
-        }
+        super(file, environment);
     }
 
     @Override
-    public String getName() {
-        return sourceName;
+    protected String getSourceTypePrefix() {
+        return "Json";
     }
 
     @Override
-    public Optional<String> get(String key) {
-        if (root == null) return Optional.empty();
-        
+    protected JsonObject parseContent(Reader reader) throws IOException {
+        return GSON.fromJson(reader, JsonObject.class);
+    }
+
+    @Override
+    protected JsonObject extractEnvironmentSection(JsonObject content, String environment, String filePath) {
+        JsonElement envElement = content.get(environment);
+        if (envElement == null || !envElement.isJsonObject()) {
+            throw new IllegalStateException("Environment section '" + environment +
+                "' not found in JSON file: " + filePath);
+        }
+        return envElement.getAsJsonObject();
+    }
+
+    @Override
+    protected String getValueFromRoot(String key) {
         JsonElement element = getNestedElement(root, key);
         if (element == null || element.isJsonNull()) {
-            return Optional.empty();
+            return null;
         }
-        
+
         if (element.isJsonPrimitive()) {
-            return Optional.of(element.getAsJsonPrimitive().getAsString());
+            return element.getAsJsonPrimitive().getAsString();
         }
-        
-        return Optional.of(element.toString());
+
+        return element.toString();
     }
 
-    @Override
-    public int getPriority() {
-        return 30; // Medium-low priority for JSON files
-    }
-    
     /**
      * Retrieves a nested JSON element using dot notation.
      * For example, "app.name" will look for {"app": {"name": "value"}}
@@ -189,17 +128,17 @@ public class JsonSource implements ConfigSource {
         if (key == null || key.isEmpty()) {
             return null;
         }
-        
+
         String[] parts = key.split("\\.");
         JsonElement current = obj;
-        
+
         for (String part : parts) {
             if (current == null || !current.isJsonObject()) {
                 return null;
             }
             current = current.getAsJsonObject().get(part);
         }
-        
+
         return current;
     }
 }

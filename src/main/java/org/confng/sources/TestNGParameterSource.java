@@ -74,7 +74,7 @@ public class TestNGParameterSource implements ConfigSource {
 
     @Override
     public int getPriority() {
-        return 80; // High priority - TestNG parameters should override most other sources
+        return 50;
     }
 
     /**

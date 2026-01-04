@@ -95,14 +95,17 @@ public class ConfNGTest {
     }
 
     @Test
-    public void envHasPrecedenceOverSystemPropertiesByDefault() {
+    public void systemPropertiesHasPrecedenceOverEnvByDefault() {
         Map<String, String> fakeEnv = new HashMap<>();
         fakeEnv.put("browser", "envChrome");
         System.setProperty("browser", "sysFirefox");
-        ConfNG.clearSourcesAndUseDefaults();
-        ConfNG.registerSourceAt(0, new EnvSource(fakeEnv));
-        assertEquals(ConfNG.get(TestConfigKey.BROWSER), "envChrome");
-        System.clearProperty("browser");
+        try {
+            ConfNG.clearSourcesAndUseDefaults();
+            ConfNG.registerSource(new EnvSource(fakeEnv));
+            assertEquals(ConfNG.get(TestConfigKey.BROWSER), "sysFirefox");
+        } finally {
+            System.clearProperty("browser");
+        }
     }
 
     @Test
@@ -696,8 +699,7 @@ public class ConfNGTest {
 
             org.confng.api.ConfigSourceInfo info = ConfNG.getSourceInfo(TestConfigKey.BROWSER);
 
-            // SystemPropertySource has priority 50
-            assertEquals(info.getPriority(), 50);
+            assertEquals(info.getPriority(), 70);
         } finally {
             System.clearProperty("browser");
         }

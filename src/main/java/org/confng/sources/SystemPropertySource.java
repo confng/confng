@@ -46,6 +46,6 @@ public class SystemPropertySource implements ConfigSource {
 
     @Override
     public int getPriority() {
-        return 50; // Medium priority for system properties
+        return 70;
     }
 }

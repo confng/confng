@@ -19,7 +19,7 @@ Add ConfNG to your Gradle project:
 
 ```gradle
 dependencies {
-    implementation 'org.confng:confng:1.0.4'
+    implementation 'org.confng:confng:1.1.0'
 }
 ```
 
@@ -29,7 +29,7 @@ Or Maven:
 <dependency>
     <groupId>org.confng</groupId>
     <artifactId>confng</artifactId>
-    <version>1.0.4</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -39,7 +39,7 @@ For seamless system property forwarding, add the ConfNG Gradle plugin:
 
 ```gradle
 plugins {
-    id 'org.confng' version '1.0.4'
+    id 'org.confng' version '1.1.0'
 }
 ```
 

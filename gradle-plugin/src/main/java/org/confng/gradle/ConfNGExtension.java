@@ -24,7 +24,7 @@ import java.util.List;
  * }</pre>
  *
  * @author Bharat Kumar Malviya
- * @since 1.0.4
+ * @since 1.1.0
  */
 public class ConfNGExtension {
 

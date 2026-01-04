@@ -14,7 +14,7 @@ import org.gradle.api.tasks.testing.Test;
  * <p><b>Usage:</b></p>
  * <pre>{@code
  * plugins {
- *     id 'org.confng' version '1.0.4'
+ *     id 'org.confng' version '1.1.0'
  * }
  * }</pre>
  *
@@ -26,7 +26,7 @@ import org.gradle.api.tasks.testing.Test;
  * <p>These properties will be automatically available via {@code ConfNG.get()}.</p>
  *
  * @author Bharat Kumar Malviya
- * @since 1.0.4
+ * @since 1.1.0
  */
 public class ConfNGPlugin implements Plugin<Project> {
 

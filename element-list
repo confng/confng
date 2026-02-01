@@ -1,6 +1,12 @@
 org.confng
 org.confng.api
+org.confng.encryption
+org.confng.generator
+org.confng.integration.micronaut
+org.confng.integration.spring
 org.confng.internal
+org.confng.metrics
+org.confng.reload
 org.confng.sources
 org.confng.testng
 org.confng.util

@@ -2,18 +2,42 @@
 
 **Release Date:** February 2026
 
-We're excited to announce ConfNG 1.1.1, a release introducing the **Gradle Plugin** and powerful new configuration management features!
+ConfNG 1.1.1 is a maintenance release with bug fixes and improvements.
 
 ---
 
-## 🎉 Highlights
+## 🎉 What's New in 1.1.1
 
-- **New Gradle Plugin** - Zero-configuration system property forwarding
-- **Enhanced Type Support** - New typed getters for Long, Double, List, and Duration
-- **Explicit Null Handling** - Optional/Required methods for fail-fast configuration
-- **Validation Framework** - Annotation-based configuration validation
-- **Source Diagnostics** - Debug where configuration values come from
-- **Prefix Retrieval** - Query configuration by prefix
+### Bug Fixes
+- Fixed test stability issues in concurrent performance tests
+- Improved error handling in configuration reload manager
+- Fixed edge cases in encryption provider registration
+
+### Improvements
+- Updated documentation with comprehensive examples
+- Enhanced test coverage across all modules
+
+### Dependencies
+- All dependencies are up to date
+
+---
+
+## 📋 Features (from 1.1.0)
+
+This release includes all features introduced in 1.1.0:
+
+- **🔌 Gradle Plugin** - Zero-configuration system property forwarding
+- **🔐 Encryption/Decryption** - AES-256-GCM encryption for sensitive values
+- **🔄 Configuration Reloading** - Hot-reload with file watching and change listeners
+- **📊 Metrics & Logging** - Track lookups, cache hits, and structured logging
+- **🌐 Remote Sources** - HTTP, Consul, and Spring Cloud Config Server
+- **🔧 Code Generators** - Generate config enums from schemas
+- **🧪 JUnit 5 Extension** - First-class JUnit 5 support with `@ConfigValue`
+- **🍃 Spring Integration** - ConfNGPropertySource for Spring applications
+- **💧 Micronaut Integration** - ConfNGPropertySourceLoader support
+- **✅ Validation Framework** - Annotation-based configuration validation
+- **🔍 Source Diagnostics** - Debug where configuration values come from
+- **🏷️ Prefix Retrieval** - Query configuration by prefix
 
 ---
 
@@ -200,13 +224,27 @@ plugins {
 
 ---
 
-## 🔄 Migration from 1.0.x
+## 🔄 Migration
+
+### From 1.1.0
+
+This is a drop-in replacement. Simply update your version number:
+
+```groovy
+// Before
+implementation 'org.confng:confng:1.1.0'
+
+// After
+implementation 'org.confng:confng:1.1.1'
+```
+
+### From 1.0.x
 
 This release is **fully backward compatible**. Simply update your version number:
 
 ```groovy
 // Before
-implementation 'org.confng:confng:1.0.3'
+implementation 'org.confng:confng:1.0.x'
 
 // After
 implementation 'org.confng:confng:1.1.1'
@@ -221,7 +259,7 @@ No code changes required. All existing APIs continue to work as expected.
 - **Website:** [https://confng.org](https://confng.org)
 - **API Docs:** [https://docs.confng.org](https://docs.confng.org)
 - **GitHub:** [https://github.com/confng/confng](https://github.com/confng/confng)
-- **Examples:** [https://github.com/confng/confng-playground](https://github.com/confng/confng-playground)
+- **Playground:** [https://github.com/confng/confng-playground](https://github.com/confng/confng-playground)
 
 ---
 
@@ -229,9 +267,22 @@ No code changes required. All existing APIs continue to work as expected.
 
 Thank you to everyone who contributed to this release!
 
+- Bharat Kumar Malviya ([@imBharatMalviya](https://github.com/imBharatMalviya))
+
 ---
 
 ## 📝 Full Changelog
 
 See the [GitHub Releases](https://github.com/confng/confng/releases/tag/v1.1.1) page for the complete list of changes.
+
+---
+
+## 📦 Artifacts
+
+| Artifact | Group ID | Artifact ID | Version |
+|----------|----------|-------------|---------|
+| Core Library | org.confng | confng | 1.1.1 |
+| Gradle Plugin | org.confng | org.confng.gradle.plugin | 1.1.1 |
+| Maven Plugin | org.confng | confng-maven-plugin | 1.1.1 |
+| JUnit 5 Extension | org.confng | junit5-extension | 1.1.1 |
 

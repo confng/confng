@@ -476,4 +476,144 @@ public class ConfigSourceTest {
         assertTrue(resolved.isFromFilesystem());
         assertFalse(resolved.isFromClasspath());
     }
+
+    // ==================== HttpConfigSource Tests ====================
+
+    @Test
+    public void httpConfigSourceCreatesWithUrl() {
+        HttpConfigSource source = new HttpConfigSource("http://localhost:8080/config");
+        assertEquals("HTTP:http://localhost:8080/config", source.getName());
+        assertEquals(30, source.getPriority());
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void httpConfigSourceRejectsNullUrl() {
+        new HttpConfigSource(null, new HashMap<>(), 5000, 10000, 60000, 30, 3, 1000);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void httpConfigSourceRejectsEmptyUrl() {
+        new HttpConfigSource("", new HashMap<>(), 5000, 10000, 60000, 30, 3, 1000);
+    }
+
+    // ==================== ConsulConfigSource Tests ====================
+
+    @Test
+    public void consulConfigSourceCreatesWithPrefix() {
+        ConsulConfigSource source = new ConsulConfigSource("myapp/config");
+        assertEquals("Consul:localhost:8500/myapp/config", source.getName());
+        assertEquals(35, source.getPriority());
+    }
+
+    @Test
+    public void consulConfigSourceBuilderCreatesSource() {
+        ConsulConfigSource source = ConsulConfigSource.builder()
+            .host("consul.example.com")
+            .port(8501)
+            .prefix("myapp/config")
+            .aclToken("test-token")
+            .useSsl(true)
+            .connectTimeoutMs(3000)
+            .readTimeoutMs(5000)
+            .cacheTimeoutMs(60000)
+            .priority(40)
+            .maxRetries(5)
+            .retryDelayMs(2000)
+            .build();
+
+        assertEquals("Consul:consul.example.com:8501/myapp/config", source.getName());
+        assertEquals(40, source.getPriority());
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void consulConfigSourceBuilderRejectsNullPrefix() {
+        ConsulConfigSource.builder()
+            .host("localhost")
+            .build();
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void consulConfigSourceBuilderRejectsEmptyPrefix() {
+        ConsulConfigSource.builder()
+            .prefix("")
+            .build();
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void consulConfigSourceRejectsNullPrefix() {
+        new ConsulConfigSource(null, 8500, null, null, false, 5000, 10000, 30000, 35, 3, 1000);
+    }
+
+    // ==================== SpringCloudConfigSource Tests ====================
+
+    @Test
+    public void springCloudConfigSourceCreatesWithBasicParams() {
+        SpringCloudConfigSource source = new SpringCloudConfigSource(
+            "http://config-server:8888", "myapp", "production");
+        assertEquals("SpringCloudConfig:http://config-server:8888/myapp/production", source.getName());
+        assertEquals(35, source.getPriority());
+    }
+
+    @Test
+    public void springCloudConfigSourceBuilderCreatesSource() {
+        SpringCloudConfigSource source = SpringCloudConfigSource.builder()
+            .serverUrl("http://config-server:8888")
+            .application("myapp")
+            .profile("production")
+            .label("main")
+            .username("user")
+            .password("secret")
+            .connectTimeoutMs(3000)
+            .readTimeoutMs(5000)
+            .cacheTimeoutMs(60000)
+            .priority(40)
+            .maxRetries(5)
+            .retryDelayMs(2000)
+            .build();
+
+        assertEquals("SpringCloudConfig:http://config-server:8888/myapp/production", source.getName());
+        assertEquals(40, source.getPriority());
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void springCloudConfigSourceBuilderRejectsNullServerUrl() {
+        SpringCloudConfigSource.builder()
+            .application("myapp")
+            .build();
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void springCloudConfigSourceBuilderRejectsEmptyServerUrl() {
+        SpringCloudConfigSource.builder()
+            .serverUrl("")
+            .application("myapp")
+            .build();
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void springCloudConfigSourceBuilderRejectsNullApplication() {
+        SpringCloudConfigSource.builder()
+            .serverUrl("http://localhost:8888")
+            .build();
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void springCloudConfigSourceBuilderRejectsEmptyApplication() {
+        SpringCloudConfigSource.builder()
+            .serverUrl("http://localhost:8888")
+            .application("")
+            .build();
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void springCloudConfigSourceRejectsNullServerUrl() {
+        new SpringCloudConfigSource(null, "myapp", "prod", "main", null, null,
+            5000, 10000, 30000, 35, 3, 1000);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void springCloudConfigSourceRejectsNullApplication() {
+        new SpringCloudConfigSource("http://localhost:8888", null, "prod", "main", null, null,
+            5000, 10000, 30000, 35, 3, 1000);
+    }
 }

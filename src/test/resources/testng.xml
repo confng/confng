@@ -7,6 +7,13 @@
             <class name="org.confng.sources.ConfigSourceTest"/>
             <class name="org.confng.sources.SecretManagerSourceTest"/>
             <class name="org.confng.testng.TestNGListenerChainTest"/>
+            <class name="org.confng.encryption.EncryptionManagerTest"/>
+            <class name="org.confng.metrics.ConfigMetricsTest"/>
+            <class name="org.confng.metrics.ConfigLoggerTest"/>
+            <class name="org.confng.reload.ConfigReloadManagerTest"/>
+            <class name="org.confng.generator.ConfigKeyGeneratorTest"/>
+            <class name="org.confng.generator.TemplateGeneratorTest"/>
+            <class name="org.confng.integration.IntegrationTest"/>
         </classes>
     </test>
 </suite>

@@ -1,8 +1,8 @@
-# ConfNG 1.1.0 Release Notes
+# ConfNG 1.1.1 Release Notes
 
-**Release Date:** January 2026
+**Release Date:** February 2026
 
-We're excited to announce ConfNG 1.1.0, a major release introducing the **Gradle Plugin** and powerful new configuration management features!
+We're excited to announce ConfNG 1.1.1, a release introducing the **Gradle Plugin** and powerful new configuration management features!
 
 ---
 
@@ -26,7 +26,7 @@ The new `org.confng` Gradle plugin automatically forwards all system properties 
 ```groovy
 plugins {
     id 'java'
-    id 'org.confng' version '1.1.0'
+    id 'org.confng' version '1.1.1'
 }
 ```
 
@@ -179,12 +179,12 @@ for (Map.Entry<String, String> entry : features.entrySet()) {
 
 ```groovy
 dependencies {
-    implementation 'org.confng:confng:1.1.0'
+    implementation 'org.confng:confng:1.1.1'
 }
 
 // Optional: Add the plugin for automatic property forwarding
 plugins {
-    id 'org.confng' version '1.1.0'
+    id 'org.confng' version '1.1.1'
 }
 ```
 
@@ -194,7 +194,7 @@ plugins {
 <dependency>
     <groupId>org.confng</groupId>
     <artifactId>confng</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -209,7 +209,7 @@ This release is **fully backward compatible**. Simply update your version number
 implementation 'org.confng:confng:1.0.3'
 
 // After
-implementation 'org.confng:confng:1.1.0'
+implementation 'org.confng:confng:1.1.1'
 ```
 
 No code changes required. All existing APIs continue to work as expected.
@@ -233,5 +233,5 @@ Thank you to everyone who contributed to this release!
 
 ## 📝 Full Changelog
 
-See the [GitHub Releases](https://github.com/confng/confng/releases/tag/v1.1.0) page for the complete list of changes.
+See the [GitHub Releases](https://github.com/confng/confng/releases/tag/v1.1.1) page for the complete list of changes.
 

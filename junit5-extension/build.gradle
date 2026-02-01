@@ -1,0 +1,90 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+}
+
+group = 'org.confng'
+version = '1.1.1'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+    withJavadocJar()
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Depend on the main ConfNG library
+    api project(':')
+    
+    // JUnit Jupiter API
+    compileOnly 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    
+    // For testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    
+    // Lombok for logging
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
+    
+    // SLF4J API for logging
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+javadoc {
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    options.addBooleanOption('Xdoclint:none', true)
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name.set("ConfNG JUnit 5 Extension")
+                description.set("JUnit 5 extension for ConfNG configuration management")
+                url.set("https://confng.org")
+                licenses {
+                    license {
+                        name.set("Apache-2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("confng")
+                        name.set("ConfNG Team")
+                        url.set("https://github.com/confng")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:https://github.com/confng/confng.git")
+                    developerConnection.set("scm:git:ssh://github.com/confng/confng.git")
+                    url.set("https://github.com/confng/confng")
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "staging"
+            url = rootProject.layout.buildDirectory.dir("staging-deploy").get().asFile.toURI()
+        }
+    }
+}
+
+signing {
+    required { false }
+}
+

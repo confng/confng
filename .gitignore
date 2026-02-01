@@ -1,4 +1,14 @@
+# Build outputs
+build/
 target/
+out/
+bin/
+
+# Gradle
+.gradle/
+*.gradle.kts.swp
+
+# Maven
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -7,19 +17,36 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-# https://maven.apache.org/wrapper/#usage-without-binary-jar
 .mvn/wrapper/maven-wrapper.jar
-.idea
-.vscode
 
-# Eclipse m2e generated files
-# Eclipse Core
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
 .project
-# JDT-specific (Eclipse Java Development Tools)
 .classpath
-/build/
-/.gradle/
-/playground/*
-/site/*
+.settings/
+
+# OS
 .DS_Store
-/gradle-plugin/build/
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test outputs
+test-output/
+surefire-reports/
+
+# Local configuration
+local.properties
+*.local
+
+# Separate repositories
+playground/
+site/

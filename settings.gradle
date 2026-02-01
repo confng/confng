@@ -1,3 +1,10 @@
 rootProject.name = 'confng'
 
-include 'gradle-plugin'
+// Gradle plugin - named to match plugin ID so only one artifact is published
+include 'org.confng.gradle.plugin'
+project(':org.confng.gradle.plugin').projectDir = file('gradle-plugin')
+
+include 'junit5-extension'
+
+// Note: maven-plugin is a Maven project (pom.xml), not included in Gradle build
+// Note: Spring and Micronaut integrations are in main module at org.confng.integration.*

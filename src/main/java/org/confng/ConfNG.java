@@ -898,6 +898,30 @@ public class ConfNG {
     }
 
     /**
+     * Gets a configuration value by string key directly from registered sources.
+     *
+     * <p>This method bypasses the ConfNGKey enum and looks up values directly
+     * from all registered configuration sources. Useful for dynamic key lookups
+     * or integration with frameworks that use string-based property names.</p>
+     *
+     * <h3>Example:</h3>
+     * <pre>{@code
+     * // Direct lookup by string key
+     * String value = ConfNG.getFromSources("app.name");
+     *
+     * // Useful for Spring/Micronaut integration
+     * String dbUrl = ConfNG.getFromSources("spring.datasource.url");
+     * }</pre>
+     *
+     * @param key the configuration key as a string
+     * @return the configuration value, or null if not found
+     * @since 1.1.0
+     */
+    public static String getFromSources(String key) {
+        return resolver.getFromSources(key);
+    }
+
+    /**
      * Gets all configuration values that match a given prefix, with source information.
      *
      * <p>This method combines prefix matching with source diagnostics:</p>
@@ -919,5 +943,164 @@ public class ConfNG {
     public static java.util.Map<String, org.confng.api.ConfigSourceInfo> getByPrefixWithInfo(
             String prefix, List<ConfNGKey> keys) {
         return resolver.getByPrefixWithInfo(prefix, keys);
+    }
+
+    // ==================== Configuration Reloading ====================
+
+    /**
+     * Adds a listener to be notified when configuration values change.
+     *
+     * <p>Listeners are notified when configuration files are reloaded (either manually
+     * via {@link #refresh()} or automatically when auto-reload is enabled).</p>
+     *
+     * <h3>Example:</h3>
+     * <pre>{@code
+     * ConfNG.addChangeListener(event -> {
+     *     if (event.hasChanged("database.pool.size")) {
+     *         reconfigurePool(event.getNewValue("database.pool.size"));
+     *     }
+     * });
+     * }</pre>
+     *
+     * @param listener the listener to add
+     * @since 1.1.0
+     * @see org.confng.reload.ConfigChangeListener
+     */
+    public static void addChangeListener(org.confng.reload.ConfigChangeListener listener) {
+        org.confng.reload.ConfigReloadManager.getInstance().addChangeListener(listener);
+    }
+
+    /**
+     * Removes a configuration change listener.
+     *
+     * @param listener the listener to remove
+     * @since 1.1.0
+     */
+    public static void removeChangeListener(org.confng.reload.ConfigChangeListener listener) {
+        org.confng.reload.ConfigReloadManager.getInstance().removeChangeListener(listener);
+    }
+
+    /**
+     * Enables automatic reloading of configuration when files change.
+     *
+     * <p>When enabled, ConfNG watches all loaded configuration files for changes.
+     * When a file is modified, the configuration is automatically reloaded and
+     * registered listeners are notified of any changes.</p>
+     *
+     * <h3>Example:</h3>
+     * <pre>{@code
+     * // Load configuration
+     * ConfNG.load("config.properties");
+     * ConfNG.load("config.yaml");
+     *
+     * // Enable auto-reload
+     * ConfNG.enableAutoReload();
+     *
+     * // Now any changes to config.properties or config.yaml will be detected
+     * }</pre>
+     *
+     * @throws java.io.IOException if the file watch service cannot be started
+     * @since 1.1.0
+     */
+    public static void enableAutoReload() throws java.io.IOException {
+        org.confng.reload.ConfigReloadManager.getInstance().enableAutoReload();
+    }
+
+    /**
+     * Enables automatic reloading with a custom debounce time.
+     *
+     * @param debounceMs minimum time in milliseconds between reloads for the same file
+     * @throws java.io.IOException if the file watch service cannot be started
+     * @since 1.1.0
+     */
+    public static void enableAutoReload(long debounceMs) throws java.io.IOException {
+        org.confng.reload.ConfigReloadManager.getInstance().enableAutoReload(debounceMs);
+    }
+
+    /**
+     * Disables automatic reloading of configuration files.
+     *
+     * @since 1.1.0
+     */
+    public static void disableAutoReload() {
+        org.confng.reload.ConfigReloadManager.getInstance().disableAutoReload();
+    }
+
+    /**
+     * Checks if automatic reloading is enabled.
+     *
+     * @return true if auto-reload is enabled
+     * @since 1.1.0
+     */
+    public static boolean isAutoReloadEnabled() {
+        return org.confng.reload.ConfigReloadManager.getInstance().isAutoReloadEnabled();
+    }
+
+    // ==================== Encryption/Decryption ====================
+
+    /**
+     * Sets the default encryption provider for decrypting configuration values.
+     *
+     * <p>Configuration values marked with {@link org.confng.encryption.Encrypted}
+     * or wrapped with encryption markers (e.g., "ENC(...)") will be automatically
+     * decrypted using this provider.</p>
+     *
+     * <h3>Example:</h3>
+     * <pre>{@code
+     * // Set up AES encryption from environment variable
+     * ConfNG.setEncryptionProvider(AesEncryptionProvider.fromEnvironment());
+     *
+     * // Now encrypted values will be automatically decrypted
+     * String password = ConfNG.get(MyConfig.DATABASE_PASSWORD);
+     * }</pre>
+     *
+     * @param provider the encryption provider to use
+     * @since 1.1.0
+     * @see org.confng.encryption.EncryptionProvider
+     * @see org.confng.encryption.AesEncryptionProvider
+     */
+    public static void setEncryptionProvider(org.confng.encryption.EncryptionProvider provider) {
+        org.confng.encryption.EncryptionManager.getInstance().setDefaultProvider(provider);
+    }
+
+    /**
+     * Registers a named encryption provider.
+     *
+     * <p>Named providers can be referenced in the {@link org.confng.encryption.Encrypted}
+     * annotation to use different encryption for different keys.</p>
+     *
+     * @param name the provider name
+     * @param provider the encryption provider
+     * @since 1.1.0
+     */
+    public static void registerEncryptionProvider(String name, org.confng.encryption.EncryptionProvider provider) {
+        org.confng.encryption.EncryptionManager.getInstance().registerProvider(name, provider);
+    }
+
+    /**
+     * Encrypts a value using the default encryption provider.
+     *
+     * <p>This is useful for generating encrypted values to put in configuration files.</p>
+     *
+     * @param plainValue the plain text value to encrypt
+     * @return the encrypted value (e.g., "ENC(base64data)")
+     * @throws org.confng.encryption.EncryptionException if no provider is configured or encryption fails
+     * @since 1.1.0
+     */
+    public static String encrypt(String plainValue) {
+        return org.confng.encryption.EncryptionManager.getInstance().encrypt(plainValue);
+    }
+
+    /**
+     * Encrypts a value using a named encryption provider.
+     *
+     * @param plainValue the plain text value to encrypt
+     * @param providerName the name of the encryption provider to use
+     * @return the encrypted value
+     * @throws org.confng.encryption.EncryptionException if the provider is not found or encryption fails
+     * @since 1.1.0
+     */
+    public static String encrypt(String plainValue, String providerName) {
+        return org.confng.encryption.EncryptionManager.getInstance().encrypt(plainValue, providerName);
     }
 }

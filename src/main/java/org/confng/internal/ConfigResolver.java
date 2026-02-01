@@ -601,5 +601,33 @@ public final class ConfigResolver {
         }
         return result;
     }
-}
 
+    /**
+     * Gets a configuration value by string key directly from registered sources.
+     *
+     * <p>This method bypasses the ConfNGKey enum and looks up values directly
+     * from all registered configuration sources.</p>
+     *
+     * @param key the configuration key as a string
+     * @return the configuration value, or null if not found
+     * @since 1.1.0
+     */
+    public String getFromSources(String key) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+
+        ensureResolved();
+
+        // Check sources in priority order
+        List<ConfigSource> sources = sourcesSupplier.get();
+        for (ConfigSource source : sources) {
+            Optional<String> value = source.get(key);
+            if (value.isPresent()) {
+                return value.get();
+            }
+        }
+
+        return null;
+    }
+}
